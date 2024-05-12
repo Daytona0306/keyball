@@ -120,9 +120,13 @@ static char to_1x(uint8_t x) {
 }
 #endif
 
-static void add_cpi(int8_t delta) {
+/*static void add_cpi(int8_t delta) {
     int16_t v = keyball_get_cpi() + delta;
     keyball_set_cpi(v < 1 ? 1 : v);
+}*/
+static void add_cpi(float delta) {
+    float v = keyball_get_cpi() + delta;
+    keyball_set_cpi(v < 0.1 ? 0.1 : v);
 }
 
 static void add_scroll_div(int8_t delta) {
