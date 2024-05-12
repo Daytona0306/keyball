@@ -728,10 +728,10 @@ bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
                 add_cpi(-1);
                 break;
             case CPI_I1K:
-                add_cpi(0.1);
+                add_cpi(10);
                 break;
             case CPI_D1K:
-                add_cpi(-0.1);
+                add_cpi(-10);
                 break;
 
             case SCRL_TO:
