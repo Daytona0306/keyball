@@ -41,3 +41,5 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define TAPPING_TERM 150
 
 #define DYNAMIC_KEYMAP_LAYER_COUNT 6
+
+#define KEYBALL_CPI_DEFAULT 750 // マウス速度 (default: 500)
