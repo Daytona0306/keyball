@@ -36,10 +36,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define TAP_CODE_DELAY 6
 
 #define POINTING_DEVICE_AUTO_MOUSE_ENABLE
-#define AUTO_MOUSE_THRESHOLD 200
+#define AUTO_MOUSE_THRESHOLD 2000
 #define AUTO_MOUSE_DEFAULT_LAYER 4
 
-#define TAPPING_TERM  2000
+#define TAPPING_TERM  200
 
 #define DYNAMIC_KEYMAP_LAYER_COUNT 6
 
