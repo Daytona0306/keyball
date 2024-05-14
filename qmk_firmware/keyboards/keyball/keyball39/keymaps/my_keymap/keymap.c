@@ -34,7 +34,7 @@ SINGLE_TAP_HOLD, //タップ＆ホールド
 DOUBLE_SINGLE_TAP, //appleのようなpp入力とダブルタップを区別
 };
 
-enum {                    //今回は２種類のタップダンスを定義
+enum {                    //今回は1種類のタップダンスを定義
 TD_Q_ESC = 0,
 };
 
@@ -67,7 +67,7 @@ static tap xtap_state = {
 .state = 0
 };
 
-/* X_TAP_DANCE_1の定義 */
+/* TD_Q_ESCの定義 */
 void x_finished_1 (tap_dance_state_t *state, void *user_data) {
 xtap_state.state = cur_dance(state);
 switch (xtap_state.state) {
@@ -105,7 +105,7 @@ xtap_state.state = 0;
 }
 
 tap_dance_action_t tap_dance_actions[] = { //上記魔法をに名前を付ける
-[X_TAP_DANCE_1] = ACTION_TAP_DANCE_FN_ADVANCED(NULL, x_finished_1, x_reset_1),
+[TD_Q_ESC] = ACTION_TAP_DANCE_FN_ADVANCED(NULL, x_finished_1, x_reset_1),
 };
 #endif
 
