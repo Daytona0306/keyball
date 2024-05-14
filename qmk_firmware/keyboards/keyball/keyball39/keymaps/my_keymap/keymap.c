@@ -82,3 +82,14 @@ void oledkit_render_info_user(void) {
     keyball_oled_render_layerinfo();
 }
 #endifj
+
+// Tap Dance declarations
+enum {
+    TD_Q_ESC,
+};
+
+// Tap Dance definitions
+tap_dance_action_t tap_dance_actions[] = {
+    // Tap once for Escape, twice for Caps Lock
+    [TD_Q_ESC] = ACTION_TAP_DANCE_DOUBLE(KC_Q, KC_ESC),
+};
