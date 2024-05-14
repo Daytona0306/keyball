@@ -26,15 +26,15 @@ bool is_press_action;
 int state;
 } tap;
 
-enum {               　　//タップダンスの種類の定義
-SINGLE_TAP = 1, 　  //タップ
+enum {                 //タップダンスの種類の定義
+SINGLE_TAP = 1,    //タップ
 SINGLE_HOLD,         //ホールド
-DOUBLE_TAP,　　　//ダブルタップ
-SINGLE_TAP_HOLD,　//タップ＆ホールド
-DOUBLE_SINGLE_TAP,　//appleのようなpp入力とダブルタップを区別
+DOUBLE_TAP,   //ダブルタップ
+SINGLE_TAP_HOLD, //タップ＆ホールド
+DOUBLE_SINGLE_TAP, //appleのようなpp入力とダブルタップを区別
 };
 
-enum {                   　//今回は２種類のタップダンスを定義
+enum {                    //今回は２種類のタップダンスを定義
 TD_Q_ESC = 0,
 };
 
@@ -43,7 +43,7 @@ int cur_dance (tap_dance_state_t *state);
 void x_finished (tap_dance_state_t *state, void *user_data);
 void x_reset (tap_dance_state_t *state, void *user_data);
 
-#define TAP_1 TD(TD_Q_ESC)　//キーマップにTAP_1と記載するため
+#define TAP_1 TD(TD_Q_ESC) //キーマップにTAP_1と記載するため
 
 #endif
 
@@ -72,16 +72,16 @@ void x_finished_1 (tap_dance_state_t *state, void *user_data) {
 xtap_state.state = cur_dance(state);
 switch (xtap_state.state) {
 case SINGLE_TAP:
-register_code(KC_Q);　//タップでQ
+register_code(KC_Q); //タップでQ
 break;
 case SINGLE_HOLD:
-register_code(KC_Q);　　//ホールドでQ
+register_code(KC_Q);  //ホールドでQ
 break;
 case DOUBLE_TAP:
-register_code(KC_ESC);　　//ダブルタップでESC
+register_code(KC_ESC);  //ダブルタップでESC
 break;
 case SINGLE_TAP_HOLD:
-register_code(KC_ESC);　　//タップ＆ホールドでESC
+register_code(KC_ESC);  //タップ＆ホールドでESC
 break;
 }
 }
@@ -89,7 +89,7 @@ break;
 void x_reset_1 (tap_dance_state_t *state, void *user_data) {
 switch (xtap_state.state) {
 case SINGLE_TAP:
-unregister_code(KC_Q);　　　//上記魔法のリセット、以下同じ
+unregister_code(KC_Q);   //上記魔法のリセット、以下同じ
 break;
 case SINGLE_HOLD:
 unregister_code(KC_Q);
@@ -104,7 +104,7 @@ break;
 xtap_state.state = 0;
 }
 
-tap_dance_action_t tap_dance_actions[] = {　//上記魔法をに名前を付ける
+tap_dance_action_t tap_dance_actions[] = { //上記魔法をに名前を付ける
 [X_TAP_DANCE_1] = ACTION_TAP_DANCE_FN_ADVANCED(NULL, x_finished_1, x_reset_1),
 };
 #endif
