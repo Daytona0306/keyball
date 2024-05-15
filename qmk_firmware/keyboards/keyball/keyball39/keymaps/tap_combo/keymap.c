@@ -175,8 +175,8 @@ void oledkit_render_info_user(void) {
 // コンボの定義
 typedef const uint16_t comb_keys_t[];
 static PROGMEM comb_keys_t
-  comb_TG1 = {KC_DEL, KC_SPC, COMBO_END},
-  comb_TG2 = {KC_DEL, KC_BSPC, COMBO_END};
+  comb_TG1 = {KC_LCTL, MO(1), COMBO_END},
+  comb_TG2 = {KC_LCTL, MO(2), COMBO_END};
 combo_t key_combos[COMBO_COUNT] = {
   COMBO( comb_TG1, TG(1) ),
   COMBO( comb_TG2, TG(2) ),
