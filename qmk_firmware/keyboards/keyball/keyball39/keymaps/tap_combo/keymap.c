@@ -179,5 +179,5 @@ static PROGMEM comb_keys_t
   comb_TG2 = {KC_F10, KC_F9, COMBO_END};
 combo_t key_combos[COMBO_COUNT] = {
   COMBO( comb_TG1, TG(1) ),
-  COMBO( comb_TG2, TG(2) )),
+  COMBO( comb_TG2, TG(2) ),
 };
