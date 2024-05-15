@@ -171,3 +171,12 @@ void oledkit_render_info_user(void) {
     keyball_oled_render_layerinfo();
 }
 #endif
+
+// コンボの定義
+const uint16_t PROGMEM combo1[] = {KC_SPC, KC_DEL, COMBO_END};
+const uint16_t PROGMEM combo2[] = {KC_BSPC, KC_DEL, COMBO_END};
+
+combo_t key_combos[COMBO_COUNT] = {
+  [C_1] = COMBO(combo1, TG(1)),
+  [C_2] = COMBO(combo2, TG(2)),
+}
