@@ -20,100 +20,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "quantum.h"
 
-#ifdef TAP_DANCE_ENABLE
-typedef struct {
-bool is_press_action;
-int state;
-} tap;
-
-enum {                 //タップダンスの種類の定義
-SINGLE_TAP = 1,    //タップ
-SINGLE_HOLD,         //ホールド
-DOUBLE_TAP,   //ダブルタップ
-SINGLE_TAP_HOLD, //タップ＆ホールド
-DOUBLE_SINGLE_TAP, //appleのようなpp入力とダブルタップを区別
-};
-
-enum {                    //今回は1種類のタップダンスを定義
-TD_Q_ESC = 0,
-};
-
-int cur_dance (tap_dance_state_t *state);
-
-void x_finished (tap_dance_state_t *state, void *user_data);
-void x_reset (tap_dance_state_t *state, void *user_data);
-
-#define TAP_1 TD(TD_Q_ESC) //キーマップにTAP_1と記載するため
-
-#endif
-
-/* Tap danceの設定 */
-#ifdef TAP_DANCE_ENABLE
-int cur_dance (tap_dance_state_t *state) {
-if (state->count ==1) {
-if (!state->pressed) return SINGLE_TAP;
-else return SINGLE_HOLD;
-}
-else if (state->count == 2) {
-if (state->interrupted) return DOUBLE_SINGLE_TAP;
-else if (state->pressed) return SINGLE_TAP_HOLD;
-else return DOUBLE_TAP;
-}
-else return 8; //magic number. At some point this method will expand to work for more presses
-}
-
-static tap xtap_state = {
-.is_press_action = true,
-.state = 0
-};
-
-/* TD_Q_ESCの定義 */
-void x_finished_1 (tap_dance_state_t *state, void *user_data) {
-xtap_state.state = cur_dance(state);
-switch (xtap_state.state) {
-case SINGLE_TAP:
-register_code(KC_Q); //タップでQ
-break;
-case SINGLE_HOLD:
-register_code(KC_Q);  //ホールドでQ
-break;
-case DOUBLE_TAP:
-register_code(KC_ESC);  //ダブルタップでESC
-break;
-case SINGLE_TAP_HOLD:
-register_code(KC_ESC);  //タップ＆ホールドでESC
-break;
-}
-}
-
-void x_reset_1 (tap_dance_state_t *state, void *user_data) {
-switch (xtap_state.state) {
-case SINGLE_TAP:
-unregister_code(KC_Q);   //上記魔法のリセット、以下同じ
-break;
-case SINGLE_HOLD:
-unregister_code(KC_Q);
-break;
-case DOUBLE_TAP:
-unregister_code(KC_ESC);
-break;
-case SINGLE_TAP_HOLD:
-unregister_code(KC_ESC);
-break;
-}
-xtap_state.state = 0;
-}
-
-tap_dance_action_t tap_dance_actions[] = { //上記魔法をに名前を付ける
-[TD_Q_ESC] = ACTION_TAP_DANCE_FN_ADVANCED(NULL, x_finished_1, x_reset_1),
-};
-#endif
-
 // clang-format off
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
   // keymap for default (VIA)
   [0] = LAYOUT_universal(
-    TAP_1    , KC_W     , KC_E     , KC_R     , KC_T     ,                            KC_Y     , KC_U     , KC_I     , KC_O     , KC_P     ,
+    KC_Q     , KC_W     , KC_E     , KC_R     , KC_T     ,                            KC_Y     , KC_U     , KC_I     , KC_O     , KC_P     ,
     KC_A     , KC_S     , KC_D     , KC_F     , KC_G     ,                            KC_H     , KC_J     , KC_K     , KC_L     , KC_SCLN  ,
     KC_Z     , KC_X     , KC_C     , KC_V     , KC_B     ,                            KC_N     , KC_M     , KC_COMM  , KC_DOT   , KC_SLSH  ,
     KC_LCTL  , KC_LGUI  , KC_LALT  ,LT(1,KC_LNG2),LT(2,KC_SPC),LT(3,KC_LNG1),KC_BSPC,LT(2,KC_ENT),LT(1,KC_LNG2),KC_RALT,KC_RGUI, KC_RSFT
@@ -171,3 +82,13 @@ void oledkit_render_info_user(void) {
     keyball_oled_render_layerinfo();
 }
 #endif
+
+// コンボの定義
+typedef const uint16_t comb_keys_t[];
+static PROGMEM comb_keys_t
+  comb_TG1 = {KC_LCTL, MO(1), COMBO_END},
+  comb_TG2 = {KC_LCTL, MO(2), COMBO_END};
+combo_t key_combos[COMBO_COUNT] = {
+  COMBO( comb_TG1, TG(1) ),
+  COMBO( comb_TG2, TG(2) ),
+};
