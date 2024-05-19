@@ -4,7 +4,7 @@ OLED_ENABLE = yes
 
 VIA_ENABLE = yes
 
-EXTRAKEY_ENABLE = no
+EXTRAKEY_ENABLE = yes
 
 COMBO_ENABLE = yes
 
