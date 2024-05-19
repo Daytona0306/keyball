@@ -39,7 +39,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //#define AUTO_MOUSE_THRESHOLD 20000
 #define AUTO_MOUSE_DEFAULT_LAYER 4
 
-#define TAPPING_TERM  180
+#define TAPPING_TERM  150
+#define IGNORE_MOD_TAP_INTERRUPT
 
 #define DYNAMIC_KEYMAP_LAYER_COUNT 6
 
