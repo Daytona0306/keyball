@@ -59,26 +59,56 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 layer_state_t layer_state_set_user(layer_state_t state) {
     // Auto enable scroll mode when the highest layer is 3
      keyball_set_scroll_mode(get_highest_layer(state) == 3);
-
-    //#ifdef POINTING_DEVICE_AUTO_MOUSE_ENABLE
-    //switch(get_highest_layer(remove_auto_mouse_layer(state, true))) {
-      //case 3:
-            //state = remove_auto_mouse_layer(state, false);
-            //set_auto_mouse_enable(false);
-            //break;
-        //default:
-            //set_auto_mouse_enable(true);
-            //break;
-    //}
-    //#endif    
-  
+ 
     return state;
 }
 
 // Keyball デフォルト処理で使用されているヘルパー関数をコピー
+static int16_t add16(int16_t a, int16_t b) {
+    int16_t r = a + b;
+    if (a >= 0 && b >= 0 && r < 0) {
+        r = 32767;
+    } else if (a < 0 && b < 0 && r >= 0) {
+        r = -32768;
+    }
+    return r;
+}
+
+static int16_t divmod16(int16_t *v, int16_t div) {
+    int16_t r = *v / div;
+    *v -= r * div;
+    return r;
+}
+
 static inline int8_t clip2int8(int16_t v) {
     return (v) < -127 ? -127 : (v) > 127 ? 127 : (int8_t)v;
 }
+
+// Keyball デフォルト処理で使用されている速度調整関数をコピー
+static void adjust_mouse_speed(keyball_motion_t *m) {
+    int16_t movement_size = abs(m->x) + abs(m->y);
+
+    float speed_multiplier = 1.0; // 基本速度
+    if (movement_size > 60) {
+        speed_multiplier = 3.0;
+    } else if (movement_size > 30) {
+        speed_multiplier = 1.5;
+    } else if (movement_size > 5 ) {
+        speed_multiplier = 1.0;
+    } else if (movement_size > 4 ) {
+        speed_multiplier = 0.9;
+    } else if (movement_size > 3 ) {
+        speed_multiplier = 0.7;
+    } else if (movement_size > 2 ) {
+        speed_multiplier = 0.5;
+    } else if (movement_size > 1 ){
+        speed_multiplier = 0.2;
+    }
+
+    m->x = clip2int8((int16_t)(m->x * speed_multiplier));
+    m->y = clip2int8((int16_t)(m->y * speed_multiplier));
+}
+
 
 // Keyball の keyball_on_apply_motion_to_mouse_move 弱い関数をオーバーライド
 void keyball_on_apply_motion_to_mouse_move(keyball_motion_t *m, report_mouse_t *r, bool is_left) {
@@ -155,9 +185,47 @@ void keyball_on_apply_motion_to_mouse_move(keyball_motion_t *m, report_mouse_t *
     // r の内容を使ってレポートを送信します。
 }
 
-// keymaps 配列、layer_state_set_user 関数、OLED 関数などはここに配置
-// keymaps 配列には必ずレイヤー5の定義を追加してください。
-// そして、レイヤー5に切り替えるためのキーを他のレイヤーに割り当ててください。
+// スクロールに加速度を適用
+void keyball_on_apply_motion_to_mouse_scroll(keyball_motion_t *m, report_mouse_t *r, bool is_left) {
+    // 現在のレイヤーを取得します。（厳密にはスクロールモード有効時のみ呼ばれる想定ですが安全のため）
+    uint8_t layer = get_highest_layer(layer_state);
+
+    // レイヤー3（スクロールモード）の場合のみ処理を行います。
+    // Layer 3 で keyball.scroll_mode が true に設定されている前提です。
+
+    // <<== スクロールにも adjust_mouse_speed を適用
+    adjust_mouse_speed(m);
+
+    // 以下は Keyball のデフォルトのスクロール処理ロジックをコピーしたものです。
+    // consume motion of trackball.
+    // keyball_get_scroll_div() は keyball.h をインクルードしていれば使えます。
+    int16_t div = 1 << (keyball_get_scroll_div() - 1);
+    int16_t x = divmod16(&m->x, div);
+    int16_t y = divmod16(&m->y, div);
+
+    // apply to mouse report.
+#if KEYBALL_MODEL == 61 || KEYBALL_MODEL == 39 || KEYBALL_MODEL == 147 || KEYBALL_MODEL == 44
+    r->h = clip2int8(y);
+    r->v = -clip2int8(x);
+    if (is_left) {
+        r->h = -r->h;
+        r->v = -r->v;
+    }
+#elif KEYBALL_MODEL == 46
+    r->h = clip2int8(x);
+    r->v = clip2int8(y);
+#else
+#    error("unknown Keyball model")
+#endif
+
+    // KeyballのデフォルトにはScroll snappingのロジックも含まれますが、
+    // 複雑になるためここでは省略します。必要に応じてkeyball.cからコピーしてください。
+    // スクロール後に蓄積された移動量をクリア
+    m->x = 0;
+    m->y = 0;
+
+    // 関数から戻ると、Keyball の calling code が r の内容を使ってレポートを送信します。
+}
 
 #ifdef OLED_ENABLE
 
