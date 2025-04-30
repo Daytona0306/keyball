@@ -29,13 +29,21 @@ static inline int8_t clip2int8(int16_t v);
 // コンボターム（ミリ秒）を設定します。必要に応じて調整してください。
 #define COMBO_TERM 50
 
-// コンボ定義
-const uint16_t tn_combo[] PROGMEM = {KC_T, KC_N, COMBO_END};
-const uint16_t ao_combo[] PROGMEM = {KC_A, KC_O, COMBO_END};
+// コンボ定義 - enumを使用した方法
+enum combos {
+  TN_TO_LNG1, // T + N で KC_LNG1 を出力
+  AO_TO_LNG2, // A + O で KC_LNG2 を出力
+  NUM_COMBOS // コンボの総数を定義 (必須ではありませんが一般的です)
+};
 
-combo_t key_combos[] __attribute__ ((section (".combos"))) = {
-  COMBO(tn_combo, KC_LNG1),
-  COMBO(ao_combo, KC_LNG2),
+// コンボを構成するキーの配列を定義
+const uint16_t PROGMEM tn_keys[] = {KC_T, KC_N, COMBO_END};
+const uint16_t PROGMEM ao_keys[] = {KC_A, KC_O, COMBO_END};
+
+// combo_t 型の配列でコンボを定義。enum名をインデックスとして使用します。
+combo_t key_combos[NUM_COMBOS] __attribute__ ((section (".combos"))) = {
+  [TN_TO_LNG1] = COMBO(tn_keys, KC_LNG1),
+  [AO_TO_LNG2] = COMBO(ao_keys, KC_LNG2),
 };
 
 // adjust_mouse_speed 関数を再度定義し、含めます。
