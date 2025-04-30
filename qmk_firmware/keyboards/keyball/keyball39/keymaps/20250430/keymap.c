@@ -3,13 +3,12 @@ Copyright 2022 @Yowkees
 Copyright 2022 MURAOKA Taro (aka KoRoN, @kaoriya)
 
 This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by the
-Free Software Foundation, either version 2 of the License, or
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 2 of the License, or
 (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+but WITHOUT ANY WARRANTY; without even the MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
@@ -20,10 +19,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "quantum.h"
 #include "pointing_device.h"
 #include "lib/keyball/keyball.h"
-#include <math.h>
+#include <math.h> // expf, sqrtf, roundf に必要
 
-// スクロール加速の感度 (1.0f-10.0f程度で調整) - 加速の全体的なスケールに影響します
-#define QMK_SCROLL_SENSITIVITY 2.0f
+// QMK_SCROLL_SENSITIVITY はこのアプローチでは直接使用しませんが、
+// 必要に応じて速度から除数へのマッピング関数内で感度調整に使うことも可能です。
+// 今回は使用しないため定義を削除します。
+
 
 static int16_t divmod16(int16_t *v, int16_t div) {
     int16_t r = *v / div;
@@ -35,8 +36,30 @@ static inline int8_t clip2int8(int16_t v) {
     return (v) < -127 ? -127 : (v) > 127 ? 127 : (int8_t)v;
 }
 
-// adjust_mouse_speed 関数は削除しました。
-// Layer 5 以外のマウス移動の速度調整はKeyballライブラリのデフォルト処理に依存します。
+// adjust_mouse_speed 関数を再度定義し、含めます。
+static void adjust_mouse_speed(keyball_motion_t *m) {
+    int16_t movement_size = abs(m->x) + abs(m->y);
+
+    float speed_multiplier = 1.0; // 基本速度
+    if (movement_size > 60) {
+        speed_multiplier = 3.0;
+    } else if (movement_size > 30) {
+        speed_multiplier = 1.5;
+    } else if (movement_size > 5 ) {
+        speed_multiplier = 1.0;
+    } else if (movement_size > 4 ) {
+        speed_multiplier = 0.9;
+    } else if (movement_size > 3 ) {
+        speed_multiplier = 0.7;
+    } else if (movement_size > 2 ) {
+        speed_multiplier = 0.5;
+    } else if (movement_size > 1 ){
+        speed_multiplier = 0.2;
+    }
+
+    m->x = clip2int8((int16_t)(m->x * speed_multiplier));
+    m->y = clip2int8((int16_t)(m->y * speed_multiplier));
+}
 
 
 // clang-format off
@@ -78,7 +101,7 @@ layer_state_t layer_state_set_user(layer_state_t state) {
 
 void keyball_on_apply_motion_to_mouse_move(keyball_motion_t *m, report_mouse_t *r, bool is_left) {
     uint8_t layer = get_highest_layer(layer_state);
-    int sensitivity_threshold = 2.5;
+    int sensitivity_threshold = 5;
 
     if (layer == 5) {
         int16_t original_delta_x = m->x;
@@ -99,8 +122,10 @@ void keyball_on_apply_motion_to_mouse_move(keyball_motion_t *m, report_mouse_t *
             }
         }
     } else {
-        // adjust_mouse_speed 関数を削除したため、ここでの呼び出しも削除
-        // Layer 5 以外のマウス移動は Keyball ライブラリのデフォルト処理に依存します。
+        // Layer 5 以外のマウス移動処理
+        // adjust_mouse_speed 関数による速度調整を再度呼び出します。
+        adjust_mouse_speed(m);
+
 
         // Keyball 39/61/147/44 のデフォルト軸マッピング (YをXに、XをYに) と反転
         #if KEYBALL_MODEL == 61 || KEYBALL_MODEL == 39 || KEYBALL_MODEL == 147 || KEYBALL_MODEL == 44
@@ -110,7 +135,7 @@ void keyball_on_apply_motion_to_mouse_move(keyball_motion_t *m, report_mouse_t *
                 r->x = -r->x;
                 r->y = -r->y;
             }
-        #endif // Removed #elif and #else blocks for other models
+        #endif
 
         m->x = 0;
         m->y = 0;
@@ -121,51 +146,82 @@ void keyball_on_apply_motion_to_mouse_scroll(keyball_motion_t *m, report_mouse_t
     static uint32_t last_scroll_time = 0;
     uint32_t current_time = timer_read();
 
+    // トラックボールの移動速度を計算 (magnitude per unit time)
     float movement = sqrtf((float)m->x * m->x + (float)m->y * m->y);
-    float accel_x = m->x;
-    float accel_y = m->y;
 
     uint32_t delta_time = timer_elapsed(last_scroll_time);
 
+    // デフォルトのスクロール除数 (keyball_get_scroll_div() は 1-7 のインデックスを返す)
+    // 実際の除数は 2^(index-1)
+    int base_n = keyball_get_scroll_div(); // 1..7
+    int dynamic_div = 1 << (base_n - 1); // デフォルトの除数 (1, 2, 4, 8, 16, 32, 64)
+
     if (delta_time > 0) {
-        float speed = movement / (float)delta_time;
-        float base_sensitivity = QMK_SCROLL_SENSITIVITY / 2.5f;
+        float speed = movement / (float)delta_time; // 速度 (単位時間あたりの移動量)
 
-        // シグモイド関数による加速計算
-        float acceleration_factor = 1.0f / (1.0f + expf(-0.5f * (speed - 8.0f)));
+        // === 速度 (speed) に応じて動的な除数インデックス (dynamic_n) を計算 ===
+        // シグモイド関数を使って、速度を 1..7 の除数インデックスにマッピングします。
+        // 低速 -> 高いインデックス (7) -> 大きい除数 -> 遅いスクロール
+        // 高速 -> 低いインデックス (1) -> 小さい除数 -> 速いスクロール
 
-        // ベース加速を小さく調整 (例: 1.0f から 0.5f に変更)
-        // 加速範囲は約 0.5x から 0.5 + 9.5 * 1 = 10x に変化します
-        float base_accel = 0.5f; // ここでベース加速を設定
-        float acceleration = base_accel + (10.0f - base_accel) * acceleration_factor; // 最大加速は10xを維持するように調整 (10.0fは目標最大加速)
+        // シグモイド関数の項 (速度に対して 0 から 1 へ変化, speed = 8.0 で 0.5)
+        float sigmoid_term = 1.0f / (1.0f + expf(-0.5f * (speed - 8.0f)));
+
+        // sigmoid_term (0..1) を 除数インデックスの範囲 (1..7) にマッピング
+        // 高速側 (sigmoid_term が 1 に近い) を インデックス 1 に、
+        // 低速側 (sigmoid_term が 0 に近い) を インデックス 7 にマッピングするため反転させます。
+        // 例: base_n=4 (divisor 8) の場合、低速時は除数を大きく (index > 4)、高速時は除数を小さく (index < 4) する
+        // マッピング式: base_n から index 7 までの範囲と base_n から index 1 までの範囲を sigmoid_term で補間
+        float dynamic_n_float;
+        if (sigmoid_term >= 0.5f) { // 速度が中心 (8.0) 以上の場合 (高速側)
+             // sigmoid_term 0.5 -> base_n, 1 -> 1 に線形補間
+             dynamic_n_float = (float)base_n + ((float)1.0f - (float)base_n) * (sigmoid_term - 0.5f) * 2.0f;
+        } else { // 速度が中心 (8.0) 未満の場合 (低速側)
+            // sigmoid_term 0 -> 7, 0.5 -> base_n に線形補間
+            dynamic_n_float = (float)7.0f + ((float)base_n - (float)7.0f) * (sigmoid_term * 2.0f);
+        }
 
 
-        acceleration *= base_sensitivity;
+        // シンプルに 1..7 の範囲にマッピングする場合はこちらを使います（調整が必要）
+        // float dynamic_n_float = 7.0f - sigmoid_term * 6.0f; // sigmoid_term 0->7, 1->1
 
-        accel_x = (float)m->x * acceleration;
-        accel_y = (float)m->y * acceleration;
 
-        if (abs(m->x) <= 1) accel_x = m->x;
-        if (abs(m->y) <= 1) accel_y = m->y;
+        // 計算された浮動小数点数のインデックスを整数に丸め、1から7の範囲にクランプ
+        int dynamic_n = (int)roundf(dynamic_n_float);
+        dynamic_n = MAX(1, MIN(7, dynamic_n));
+
+        // 動的な除数を計算
+        dynamic_div = 1 << (dynamic_n - 1);
+
+        // デバッグ用: 計算されたインデックスと除数を一時的に表示するなど検討
+        // #ifdef CONSOLE_ENABLE
+        // print("Speed: "); pfloat(speed, 2); print(" sigmoid: "); pfloat(sigmoid_term, 2);
+        // print(" n_float: "); pfloat(dynamic_n_float, 2); print(" n: "); print_int(dynamic_n);
+        // print(" div: "); print_int(dynamic_div); print("\n");
+        // #endif
     }
 
     last_scroll_time = current_time;
-    m->x = (int16_t)roundf(accel_x);
-    m->y = (int16_t)roundf(accel_y);
 
-    int16_t div = 1 << (keyball_get_scroll_div() - 1);
-    int16_t x = divmod16(&m->x, div);
-    int16_t y = divmod16(&m->y, div);
+    // 動的に計算された除数を使用して divmod16 を適用
+    // divmod16 は m->x/y を変更して残余を保持します
+    int16_t x = divmod16(&m->x, dynamic_div);
+    int16_t y = divmod16(&m->y, dynamic_div);
 
-    // Keyball 39/61/147/44 のデフォルト軸マッピング (YをXに、XをYに) と反転
+    // apply to mouse report.
+    // r->h and r->v get the scroll amount
     #if KEYBALL_MODEL == 61 || KEYBALL_MODEL == 39 || KEYBALL_MODEL == 147 || KEYBALL_MODEL == 44
-        r->h = clip2int8(y);
-        r->v = -clip2int8(x);
+        r->h = clip2int8(y); // Horizontal scroll from Y movement (Keyball default mapping)
+        r->v = -clip2int8(x); // Vertical scroll from X movement (Keyball default mapping)
         if (is_left) {
             r->h = -r->h;
             r->v = -r->v;
         }
-    #endif // Removed #elif and #else blocks for other models
+    #endif
+
+    // Keyballの既存ロジックと divmod16 が残余を扱います。
+
+    // Function returns, Keyball's calling code uses r to send the report.
 }
 
 #ifdef OLED_ENABLE
