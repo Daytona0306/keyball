@@ -34,27 +34,9 @@ static inline int8_t clip2int8(int16_t v) {
     return (v) < -127 ? -127 : (v) > 127 ? 127 : (int8_t)v;
 }
 
-static void adjust_mouse_speed(keyball_motion_t *m) {
-    int16_t movement_size = abs(m->x) + abs(m->y);
-    float speed_multiplier = 1.0;
-    if (movement_size > 60) {
-        speed_multiplier = 3.0;
-    } else if (movement_size > 30) {
-        speed_multiplier = 1.5;
-    } else if (movement_size > 5 ) {
-        speed_multiplier = 1.0;
-    } else if (movement_size > 4 ) {
-        speed_multiplier = 0.9;
-    } else if (movement_size > 3 ) {
-        speed_multiplier = 0.7;
-    } else if (movement_size > 2 ) {
-        speed_multiplier = 0.5;
-    } else if (movement_size > 1 ){
-        speed_multiplier = 0.2;
-    }
-    m->x = clip2int8((int16_t)(m->x * speed_multiplier));
-    m->y = clip2int8((int16_t)(m->y * speed_multiplier));
-}
+// adjust_mouse_speed 関数は削除しました。
+// Layer 5 以外のマウス移動の速度調整はKeyballライブラリのデフォルト処理に依存します。
+
 
 // clang-format off
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
@@ -116,7 +98,8 @@ void keyball_on_apply_motion_to_mouse_move(keyball_motion_t *m, report_mouse_t *
             }
         }
     } else {
-        adjust_mouse_speed(m);
+        // adjust_mouse_speed(m); // adjust_mouse_speed 関数を削除したため、ここでの呼び出しも削除
+        // Layer 5 以外のマウス移動は Keyball ライブラリのデフォルト処理に依存します。
         #if KEYBALL_MODEL == 61 || KEYBALL_MODEL == 39 || KEYBALL_MODEL == 147 || KEYBALL_MODEL == 44
             r->x = clip2int8(m->y);
             r->y = clip2int8(m->x);
@@ -179,7 +162,7 @@ void keyball_on_apply_motion_to_mouse_scroll(keyball_motion_t *m, report_mouse_t
         r->v = clip2int8(y);
     #else
     #    error("unknown Keyball model")
-    #endif
+        #endif
 }
 
 #ifdef OLED_ENABLE
