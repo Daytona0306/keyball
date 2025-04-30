@@ -20,6 +20,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include QMK_KEYBOARD_H
 
 #include "quantum.h"
+#include "pointing_device.h"
+#include "keyball.h"
 
 // clang-format off
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
@@ -73,12 +75,17 @@ layer_state_t layer_state_set_user(layer_state_t state) {
     return state;
 }
 
+// Keyball デフォルト処理で使用されているヘルパー関数をコピー
+static inline int8_t clip2int8(int16_t v) {
+    return (v) < -127 ? -127 : (v) > 127 ? 127 : (int8_t)v;
+}
+
+// Keyball の keyball_on_apply_motion_to_mouse_move 弱い関数をオーバーライド
 void keyball_on_apply_motion_to_mouse_move(keyball_motion_t *m, report_mouse_t *r, bool is_left) {
     // 現在のレイヤーを取得します。
     uint8_t layer = get_highest_layer(layer_state);
 
     // トラックボールの移動量のしきい値を設定します。
-    // この値より小さい移動は無視され、チャタリングなどを防止できます。
     // 実機でのテストに基づいて調整してください。
     int sensitivity_threshold = 5; // ZMKの 'tick' に相当する概念。調整が必要。
 
@@ -102,28 +109,55 @@ void keyball_on_apply_motion_to_mouse_move(keyball_motion_t *m, report_mouse_t *
 
         // しきい値を超えた移動量があるかチェックし、矢印キーをタップ
         if (abs(original_delta_x) > sensitivity_threshold || abs(original_delta_y) > sensitivity_threshold) {
-            if (abs(original_delta_x) > abs(original_delta_y)) { // 水平移動が支配的
-                if (original_delta_x > sensitivity_threshold) {
-                    tap_code(KC_RIGHT);
-                } else if (original_delta_x < -sensitivity_threshold) {
-                    tap_code(KC_LEFT);
-                }
-            } else { // 垂直移動が支配的、または同じ
-                 if (original_delta_y < -sensitivity_threshold) { // Y- 方向 (UP)
-                    tap_code(KC_UP);
-                } else if (original_delta_y > sensitivity_threshold) { // Y+ 方向 (DOWN)
-                    tap_code(KC_DOWN);
-                }
+            // レイヤー5での矢印キーマッピング
+            // Keyballのデフォルト処理がX/Yを入れ替えるため、ここではその逆を行います。
+            // 元のX移動量(horizontal)をVertical Arrow Keysに、元のY移動量(vertical)をHorizontal Arrow Keysにマップします。
+            if (abs(original_delta_x) > abs(original_delta_y)) { // 支配的な元のX移動 (Physical Left/Right)
+                // これをVertical Arrow Keys (UP/DOWN) にマップ
+                 if (original_delta_x < -sensitivity_threshold) { tap_code(KC_UP); } // 元X- (Left) -> KC_UP (ユーザー観測ではUP)
+                else if (original_delta_x > sensitivity_threshold) { tap_code(KC_DOWN); } // 元X+ (Right) -> KC_DOWN (ユーザー観測ではDOWN)
+
+            } else { // 支配的な元のY移動 (Physical Up/Down)
+                // これをHorizontal Arrow Keys (LEFT/RIGHT) にマップ
+                 if (original_delta_y < -sensitivity_threshold) { tap_code(KC_LEFT); } // 元Y- (Up) -> KC_LEFT (ユーザー観測ではLEFT)
+                else if (original_delta_y > sensitivity_threshold) { tap_code(KC_RIGHT); } // 元Y+ (Down) -> KC_RIGHT (ユーザー観測ではRIGHT)
             }
-            // ZMKの 'wait-ms', 'tap-ms' のようなタイミング制御が必要な場合は、
-            // ここにタイマーや状態管理のロジックを追加する必要があります。
         }
+    } else {
+        // レイヤーが5以外の場合、Keyball のデフォルトの移動処理を実行します。
+        // このコードは keyball.c の keyball_on_apply_motion_to_mouse_move のデフォルト実装からコピーしています。
+        // これにより、Layer 5 以外のレイヤーで通常のマウス移動が機能するようになります。
+        // adjust_mouse_speed(m); // adjust_mouse_speed は keyball.c の static 関数なので直接呼べません。速度調整が必要ならロジックをコピーするか別の方法で。ここでは軸マッピングのみコピー。
+
+        #if KEYBALL_MODEL == 61 || KEYBALL_MODEL == 39 || KEYBALL_MODEL == 147 || KEYBALL_MODEL == 44
+            // Keyball 39/61/147/44 のデフォルト軸マッピング (YをXに、XをYに) と反転
+            r->x = clip2int8(m->y);
+            r->y = clip2int8(m->x);
+            if (is_left) {
+                r->x = -r->x;
+                r->y = -r->y;
+            }
+        #elif KEYBALL_MODEL == 46
+            // Keyball 46 のデフォルト軸マッピング
+            r->x = clip2int8(m->x);
+            r->y = -clip2int8(m->y);
+        #else
+            // 未知のKeyballモデルの場合のフォールバック
+            r->x = clip2int8(m->x);
+            r->y = clip2int8(m->y);
+        #endif
+
+        // デフォルト処理で移動量を使用した後にクリア
+        m->x = 0;
+        m->y = 0;
     }
-    // レイヤーが5以外の場合、この関数内では特に何もしません。
-    // 関数から戻ると、Keyball のデフォルトの apply_motion_to_mouse_move/scroll 処理が、
-    // 変更されていない m のデータを使ってレポート r を生成し、送信します。
-    // これにより、レイヤー3でのスクロールや、その他のレイヤーでの通常のマウス移動が機能します。
+    // 関数から戻ると、Keyball の calling code (pointing_device_driver_get_report) が
+    // r の内容を使ってレポートを送信します。
 }
+
+// keymaps 配列、layer_state_set_user 関数、OLED 関数などはここに配置
+// keymaps 配列には必ずレイヤー5の定義を追加してください。
+// そして、レイヤー5に切り替えるためのキーを他のレイヤーに割り当ててください。
 
 #ifdef OLED_ENABLE
 
