@@ -127,7 +127,7 @@ void keyball_on_apply_motion_to_mouse_move(keyball_motion_t *m, report_mouse_t *
 
     // トラックボールの移動量のしきい値を設定します。
     // 実機でのテストに基づいて調整してください。
-    int sensitivity_threshold = 5; // ZMKの 'tick' に相当する概念。調整が必要。
+    int sensitivity_threshold = 3; // ZMKの 'tick' に相当する概念。調整が必要。
 
     // レイヤー5の場合のみトラックボールの移動を処理します。(矢印キー)
     if (layer == 5) {
