@@ -169,7 +169,7 @@ void keyball_on_apply_motion_to_mouse_move(keyball_motion_t *m, report_mouse_t *
             } else { // 支配的な元のY移動 (Physical Up/Down)
                 // これをHorizontal Arrow Keys (LEFT/RIGHT) にマップ
                  if (original_delta_y < -sensitivity_threshold) { tap_code(KC_LEFT); } // 元Y- (Up) -> KC_LEFT
-                else if (original_delta_y > sensitivity_delta) { tap_code(KC_RIGHT); } // 元Y+ (Down) -> KC_RIGHT // <<== delta の綴りが間違っていたので修正
+                else if (original_delta_y > sensitivity_threshold) { tap_code(KC_RIGHT); } // 元Y+ (Down) -> KC_RIGHT // <<== delta の綴りが間違っていたので修正
             }
         }
     } else {
