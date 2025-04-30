@@ -101,7 +101,7 @@ layer_state_t layer_state_set_user(layer_state_t state) {
 
 void keyball_on_apply_motion_to_mouse_move(keyball_motion_t *m, report_mouse_t *r, bool is_left) {
     uint8_t layer = get_highest_layer(layer_state);
-    int sensitivity_threshold = 5;
+    int sensitivity_threshold = 2.5;
 
     if (layer == 5) {
         int16_t original_delta_x = m->x;
@@ -165,7 +165,7 @@ void keyball_on_apply_motion_to_mouse_scroll(keyball_motion_t *m, report_mouse_t
         // 高速 -> 低いインデックス (1) -> 小さい除数 -> 速いスクロール
 
         // シグモイド関数の項 (速度に対して 0 から 1 へ変化, speed = 8.0 で 0.5)
-        float sigmoid_term = 1.0f / (1.0f + expf(-0.5f * (speed - 8.0f)));
+        float sigmoid_term = 1.0f / (1.0f + expf(-0.3f * (speed - 12.0f)));
 
         // sigmoid_term (0..1) を 除数インデックスの範囲 (1..7) にマッピング
         // 高速側 (sigmoid_term が 1 に近い) を インデックス 1 に、
