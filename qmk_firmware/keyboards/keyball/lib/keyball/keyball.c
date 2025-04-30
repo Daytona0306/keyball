@@ -1,3 +1,4 @@
+
 /*
 Copyright 2022 MURAOKA Taro (aka KoRoN, @kaoriya)
 
@@ -166,7 +167,7 @@ void pointing_device_driver_set_cpi(uint16_t cpi) {
     keyball_set_cpi(cpi);
 }
 
-
+__attribute__((weak)) void keyball_on_apply_motion_to_mouse_move(keyball_motion_t *m, report_mouse_t *r, bool is_left) {
 #if KEYBALL_MODEL == 61 || KEYBALL_MODEL == 39 || KEYBALL_MODEL == 147 || KEYBALL_MODEL == 44
     r->x = clip2int8(m->y);
     r->y = clip2int8(m->x);
@@ -703,10 +704,10 @@ bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
                 add_cpi(-1);
                 break;
             case CPI_I1K:
-                add_cpi(5);
+                add_cpi(10);
                 break;
             case CPI_D1K:
-                add_cpi(-5);
+                add_cpi(-10);
                 break;
 
             case SCRL_TO:
