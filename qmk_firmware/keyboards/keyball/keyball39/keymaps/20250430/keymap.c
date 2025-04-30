@@ -98,8 +98,10 @@ void keyball_on_apply_motion_to_mouse_move(keyball_motion_t *m, report_mouse_t *
             }
         }
     } else {
-        // adjust_mouse_speed(m); // adjust_mouse_speed 関数を削除したため、ここでの呼び出しも削除
+        // adjust_mouse_speed 関数を削除したため、ここでの呼び出しも削除
         // Layer 5 以外のマウス移動は Keyball ライブラリのデフォルト処理に依存します。
+
+        // Keyball 39/61/147/44 のデフォルト軸マッピング (YをXに、XをYに) と反転
         #if KEYBALL_MODEL == 61 || KEYBALL_MODEL == 39 || KEYBALL_MODEL == 147 || KEYBALL_MODEL == 44
             r->x = clip2int8(m->y);
             r->y = clip2int8(m->x);
@@ -107,12 +109,8 @@ void keyball_on_apply_motion_to_mouse_move(keyball_motion_t *m, report_mouse_t *
                 r->x = -r->x;
                 r->y = -r->y;
             }
-        #elif KEYBALL_MODEL == 46
-            r->x = clip2int8(m->x);
-            r->y = -clip2int8(m->y);
-        #else
-    #    error("unknown Keyball model")
-        #endif
+        #endif // Removed #elif and #else blocks for other models
+
         m->x = 0;
         m->y = 0;
     }
@@ -150,6 +148,7 @@ void keyball_on_apply_motion_to_mouse_scroll(keyball_motion_t *m, report_mouse_t
     int16_t x = divmod16(&m->x, div);
     int16_t y = divmod16(&m->y, div);
 
+    // Keyball 39/61/147/44 のデフォルト軸マッピング (YをXに、XをYに) と反転
     #if KEYBALL_MODEL == 61 || KEYBALL_MODEL == 39 || KEYBALL_MODEL == 147 || KEYBALL_MODEL == 44
         r->h = clip2int8(y);
         r->v = -clip2int8(x);
@@ -157,12 +156,7 @@ void keyball_on_apply_motion_to_mouse_scroll(keyball_motion_t *m, report_mouse_t
             r->h = -r->h;
             r->v = -r->v;
         }
-    #elif KEYBALL_MODEL == 46
-        r->h = clip2int8(x);
-        r->v = clip2int8(y);
-    #else
-    #    error("unknown Keyball model")
-        #endif
+    #endif // Removed #elif and #else blocks for other models
 }
 
 #ifdef OLED_ENABLE
