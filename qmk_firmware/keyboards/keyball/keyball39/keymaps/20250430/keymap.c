@@ -77,7 +77,7 @@ layer_state_t layer_state_set_user(layer_state_t state) {
 
 void keyball_on_apply_motion_to_mouse_move(keyball_motion_t *m, report_mouse_t *r, bool is_left) {
     uint8_t layer = get_highest_layer(layer_state);
-    int sensitivity_threshold = 5;
+    int sensitivity_threshold = 2;
 
     if (layer == 5) {
         int16_t original_delta_x = m->x;
