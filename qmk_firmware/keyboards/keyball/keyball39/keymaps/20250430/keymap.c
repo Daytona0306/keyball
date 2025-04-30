@@ -26,19 +26,19 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // Keyball デフォルト処理で使用されている静的ヘルパー関数をコピー
 // これらは keyball.c から持ってきています
 static int16_t add16(int16_t a, int16_t b) {
-    int16_t r = a + b;
-    if (a >= 0 && b >= 0 && r < 0) {
-        r = 32767;
-    } else if (a < 0 && b < 0 && r >= 0) {
-        r = -32768;
-    }
-    return r;
+    int16_t r = a + b;
+    if (a >= 0 && b >= 0 && r < 0) {
+        r = 32767;
+    } else if (a < 0 && b < 0 && r >= 0) {
+        r = -32768;
+    }
+    return r;
 }
 
 static int16_t divmod16(int16_t *v, int16_t div) {
-    int16_t r = *v / div;
-    *v -= r * div;
-    return r;
+    int16_t r = *v / div;
+    *v -= r * div;
+    return r;
 }
 
 static inline int8_t clip2int8(int16_t v) {
@@ -48,27 +48,27 @@ static inline int8_t clip2int8(int16_t v) {
 // Keyball デフォルト処理で使用されている速度調整関数をコピー
 // これも keyball.c から持ってきています
 static void adjust_mouse_speed(keyball_motion_t *m) {
-    int16_t movement_size = abs(m->x) + abs(m->y);
+    int16_t movement_size = abs(m->x) + abs(m->y);
 
-    float speed_multiplier = 1.0; // 基本速度
-    if (movement_size > 60) {
-        speed_multiplier = 3.0;
-    } else if (movement_size > 30) {
-        speed_multiplier = 1.5;
-    } else if (movement_size > 5 ) {
-        speed_multiplier = 1.0;
-    } else if (movement_size > 4 ) {
-        speed_multiplier = 0.9;
-    } else if (movement_size > 3 ) {
-        speed_multiplier = 0.7;
-    } else if (movement_size > 2 ) {
-        speed_multiplier = 0.5;
-    } else if (movement_size > 1 ){
-        speed_multiplier = 0.2;
-    }
+    float speed_multiplier = 1.0; // 基本速度
+    if (movement_size > 60) {
+        speed_multiplier = 3.0;
+    } else if (movement_size > 30) {
+        speed_multiplier = 1.5;
+    } else if (movement_size > 5 ) {
+        speed_multiplier = 1.0;
+    } else if (movement_size > 4 ) {
+        speed_multiplier = 0.9;
+    } else if (movement_size > 3 ) {
+        speed_multiplier = 0.7;
+    } else if (movement_size > 2 ) {
+        speed_multiplier = 0.5;
+    } else if (movement_size > 1 ){
+        speed_multiplier = 0.2;
+    }
 
-    m->x = clip2int8((int16_t)(m->x * speed_multiplier));
-    m->y = clip2int8((int16_t)(m->y * speed_multiplier));
+    m->x = clip2int8((int16_t)(m->x * speed_multiplier));
+    m->y = clip2int8((int16_t)(m->y * speed_multiplier));
 }
 
 
