@@ -215,35 +215,28 @@ void keyball_on_apply_motion_to_mouse_scroll(keyball_motion_t *m, report_mouse_t
         float speed = movement / (float)delta_time; // 速度 (単位時間あたりの移動量)
 
         // === 速度 (speed) に応じて動的な除数インデックス (dynamic_n) を計算 ===
-        // シグモイド関数を使って、速度を 1..7 の除数インデックスにマッピングします。
-        // 低速 -> 高いインデックス (7) -> 大きい除数 -> 遅いスクロール
-        // 高速 -> 低いインデックス (1) -> 小さい除数 -> 速いスクロール
+        // シグモイド関数を使って、速度を 0 から 1 へマッピングします。
+        // 低速 -> 0 に近い値
+        // 高速 -> 1 に近い値
 
-        // シグモイド関数の項 (速度に対して 0 から 1 へ変化, speed = 8.0 で 0.5)
+        // シグモイド関数の項 (速度に対して 0 から 1 へ変化, speed = 80.0 で 0.5)
+        // 傾き -0.05f, 中心 80.0f
         float sigmoid_term = 1.0f / (1.0f + expf(-0.05f * (speed - 80.0f)));
 
         // sigmoid_term (0..1) を 除数インデックスの範囲 (1..7) にマッピング
-        // 高速側 (sigmoid_term が 1 に近い) を インデックス 1 に、
-        // 低速側 (sigmoid_term が 0 に近い) を インデックス 7 にマッピングするため反転させます。
-        // 例: base_n=4 (divisor 8) の場合、低速時は除数を大きく (index > 4)、高速時は除数を小さく (index < 4) する
-        // マッピング式: base_n から index 7 までの範囲と base_n から index 1 までの範囲を sigmoid_term で補間
+        // sigmoid_term 0 -> 7, 0.5 -> base_n, 1 -> 1 となるように線形補間
         float dynamic_n_float;
         if (sigmoid_term >= 0.5f) { // 速度が中心 (80.0) 以上の場合 (高速側)
-             // sigmoid_term 0.5 -> base_n, 1 -> 1 に線形補間
+             // sigmoid_term 0.5 から 1 の範囲を base_n から 1 に線形補間
              dynamic_n_float = (float)base_n + ((float)1.0f - (float)base_n) * (sigmoid_term - 0.5f) * 2.0f;
         } else { // 速度が中心 (80.0) 未満の場合 (低速側)
-            // sigmoid_term 0 -> 7, 0.5 -> base_n に線形補間
+            // sigmoid_term 0 から 0.5 の範囲を 7 から base_n に線形補間
             dynamic_n_float = (float)7.0f + ((float)base_n - (float)7.0f) * (sigmoid_term * 2.0f);
         }
 
-
-        // シンプルに 1..7 の範囲にマッピングする場合はこちらを使います（調整が必要）
-        // float dynamic_n_float = 7.0f - sigmoid_term * 6.0f; // sigmoid_term 0->7, 1->1
-
-
         // 計算された浮動小数点数のインデックスを整数に丸め、1から7の範囲にクランプ
         int dynamic_n = (int)roundf(dynamic_n_float);
-        dynamic_n = MAX(1, MIN(7, dynamic_n)); // クランプ範囲は1-7に戻しました。
+        dynamic_n = MAX(1, MIN(7, dynamic_n));
 
         // 動的な除数を計算
         dynamic_div = 1 << (dynamic_n - 1);
@@ -264,17 +257,17 @@ void keyball_on_apply_motion_to_mouse_scroll(keyball_motion_t *m, report_mouse_t
     int16_t y = divmod16(&m->y, dynamic_div);
 
     // === スクロールスナップモードの適用 ===
-    // keyball_scroll_snap_mode_t は lib/keyball/keyball.h で宣言されている型です
-    keyball_scroll_snap_mode_t snap_mode = keyball_get_scroll_snap_mode();
+    // keyball_scrollsnap_mode_t は lib/keyball/keyball.h で宣言されている型です
+    keyball_scrollsnap_mode_t snap_mode = keyball_get_scrollsnap_mode();
 
-    if (snap_mode == KEYBALL_SCROLL_SNAP_MODE_VERTICAL) {
+    if (snap_mode == KEYBALL_SCROLLSNAP_MODE_VERTICAL) {
         // 垂直スナップモードの場合、水平方向のスクロール量 (x) をゼロにする
         x = 0;
-    } else if (snap_mode == KEYBALL_SCROLL_SNAP_MODE_HORIZONTAL) {
+    } else if (snap_mode == KEYBALL_SCROLLSNAP_MODE_HORIZONTAL) {
         // 水平スナップモードの場合、垂直方向のスクロール量 (y) をゼロにする
         y = 0;
     }
-    // KEYBALL_SCROLL_SNAP_MODE_FREE の場合、x と y はそのまま
+    // KEYBALL_SCROLLSNAP_MODE_FREE の場合、x と y はそのまま
 
 
     // apply to mouse report.
