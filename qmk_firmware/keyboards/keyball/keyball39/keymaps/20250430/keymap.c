@@ -54,57 +54,57 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 // clang-format on
 
 bool pointing_device_task(void) {
-    // ポインティングデバイスから現在のレポートを取得します。
-    report_mouse_t mouse_report = pointing_device_get_report();
+   // ポインティングデバイスから現在のレポートを取得します。
+   report_mouse_t mouse_report = pointing_device_get_report();
 
-    // 現在の最も高いアクティブなレイヤーを取得します。
+   // 現在の最も高いアクティブなレイヤーを取得します。
     // <<== get_highest_layer に layer_state を引数として渡すように修正
-    uint8_t layer = get_highest_layer(layer_state);
+   uint8_t layer = get_highest_layer(layer_state);
 
-    // トラックボールの移動量のしきい値を設定します。
-    // この値より小さい移動は無視され、チャタリングなどを防止できます。
-    // 実機でのテストに基づいて調整してください。
-    int sensitivity_threshold = 5; // ZMKの 'tick' に相当する概念
+   // トラックボールの移動量のしきい値を設定します。
+   // この値より小さい移動は無視され、チャタリングなどを防止できます。
+   // 実機でのテストに基づいて調整してください。
+   int sensitivity_threshold = 5; // ZMKの 'tick' に相当する概xxxxxx念
 
     bool handled = false; // ポインティングデバイス処理を独自に処理したかを示すフラグ
 
-    // レイヤー5の場合のみトラックボールの移動を処理します。(矢印キー)
-    if (layer == 5) {
+   // レイヤー5の場合のみトラックボールの移動を処理します。(矢印キー)
+   if (layer == 5) {
         handled = true; // レイヤー5は独自処理
 
-        // 元の移動量を一時的に保存
-        int8_t original_delta_x = mouse_report.x;
-        int8_t original_delta_y = mouse_report.y;
+      // 元の移動量を一時的に保存
+      int8_t original_delta_x = mouse_report.x;
+      int8_t original_delta_y = mouse_report.y;
 
-        // このレイヤーではデフォルトのマウス移動を無効にするため、レポートの移動量をゼロに設定
-        mouse_report.x = 0;
-        mouse_report.y = 0;
-        mouse_report.v = 0; // スクロールも無効
+      // このレイヤーではデフォルトのマウス移動を無効にするため、レポートの移動量をゼロに設定
+      mouse_report.x = 0;
+      mouse_report.y = 0;
+      mouse_report.v = 0; // スクロールも無効
 
-        // しきい値を超えた移動量があるかチェック
-        if (abs(original_delta_x) > sensitivity_threshold || abs(original_delta_y) > sensitivity_threshold) {
-            // 支配的な移動方向を判定し、対応する矢印キーをタップします。
-            // Y-方向が UP、Y+方向が DOWN に対応するのが一般的です。
-            if (abs(original_delta_x) > abs(original_delta_y)) { // 水平移動が支配的
-                if (original_delta_x > sensitivity_threshold) {
-                    tap_code(KC_RIGHT);
-                } else if (original_delta_x < -sensitivity_threshold) {
-                    tap_code(KC_LEFT);
-                }
-            } else { // 垂直移動が支配的、または同じ
-                 if (original_delta_y < -sensitivity_threshold) { // Y- 方向
-                    tap_code(KC_UP);
-                } else if (original_delta_y > sensitivity_threshold) { // Y+ 方向
-                    tap_code(KC_DOWN);
-                }
-            }
-            // ZMKの 'wait-ms', 'tap-ms' のようなタイミング制御が必要な場合は、
-            // ここにタイマーや状態管理のロジックを追加する必要があります。
-            // この例は移動検出ごとに即座にキーをタップします。
-        }
+      // しきい値を超えた移動量があるかチェック
+      if (abs(original_delta_x) > sensitivity_threshold || abs(original_delta_y) > sensitivity_threshold) {
+         // 支配的な移動方向を判定し、対応する矢印キーをタップします。
+         // Y-方向が UP、Y+方向が DOWN に対応するのが一般的です。
+         if (abs(original_delta_x) > abs(original_delta_y)) { // 水平移動が支配的
+            if (original_delta_x > sensitivity_threshold) {
+               tap_code(KC_RIGHT);
+            } else if (original_delta_x < -sensitivity_threshold) {
+               tap_code(KC_LEFT);
+            }
+         } else { // 垂直移動が支配的、または同じ
+             if (original_delta_y < -sensitivity_threshold) { // Y- 方向
+               tap_code(KC_UP);
+            } else if (original_delta_y > sensitivity_threshold) { // Y+ 方向
+               tap_code(KC_DOWN);
+            }
+         }
+         // ZMKの 'wait-ms', 'tap-ms' のようなタイミング制御が必要な場合は、
+         // ここにタイマーや状態管理のロジックを追加する必要があります。
+         // この例は移動検出ごとに即座にキーをタップします。
+      }
 
-    }
-    // レイヤー3の場合は Keyball 独自のスクロールモードが layer_state_set_user で有効になっている想定です。
+   }
+   // レイヤー3の場合は Keyball 独自のスクロールモードが layer_state_set_user で有効になっている想定です。
     // pointing_device_task では特別なキー入力を生成せず、デフォルト処理に任せます。
     // mouse_report のデータはここでは変更しません。
     // else if (layer == 3) { /* 何もしない */ }
@@ -120,14 +120,14 @@ bool pointing_device_task(void) {
     // Keyballのファームウェア構造によるため、ここでは標準的な pointing_device_task オーバーライドの形式をとります。
     // シンプルに常に true を返すのが、オーバーライドの一般的な方法です。
     
-    // 最終的なマウスレポートをQMKのUSBスタックに送信します。
-    // レイヤー5の場合は移動量がゼロになり、矢印キー入力のみが行われます。
-    // レイヤー3およびその他のレイヤーでは、取得した元の移動量が送信され、
-    // デフォルトのマウス/スクロール処理（レイヤー3ではKeyballのスクロールモード）が行われます。
-    pointing_device_set_report(mouse_report);
+   // 最終的なマウスレポートをQMKのUSBスタックに送信します。
+   // レイヤー5の場合は移動量がゼロになり、矢印キー入力のみが行われます。
+   // レイヤー3およびその他のレイヤーでは、取得した元の移動量が送信され、
+   // デフォルトのマウス/スクロール処理（レイヤー3ではKeyballのスクロールモード）が行われます。
+   pointing_device_set_report(mouse_report);
     
     // <<== 関数宣言に合わせて bool を返すように修正
-    return true;
+   return true;
 }
 
 
