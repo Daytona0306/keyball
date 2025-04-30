@@ -1,3 +1,4 @@
+
 /*
 Copyright 2022 @Yowkees
 Copyright 2022 MURAOKA Taro (aka KoRoN, @kaoriya)
@@ -17,8 +18,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include QMK_KEYBOARD_H
+
 #include "quantum.h"
-#include "pointing_device.h"
 
 // clang-format off
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
@@ -53,26 +54,76 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 };
 // clang-format on
 
-// pointing_device_task 関数 - デバッグ用 (常にレポートをそのまま通過させる)
-bool pointing_device_task(void) {
-   // ポインティングデバイスから現在のレポートを取得します。
-   report_mouse_t mouse_report = pointing_device_get_report();
+layer_state_t layer_state_set_user(layer_state_t state) {
+    // Auto enable scroll mode when the highest layer is 3
+     keyball_set_scroll_mode(get_highest_layer(state) == 3);
 
-   // デバッグのため、レイヤーに関係なくレポートをそのまま通過させます。
-   // これでマウスカーソルが動くか確認します。
-
-   // 最終的なマウスレポートをQMKのUSBスタックに送信します。
-   pointing_device_set_report(mouse_report);
-
-   // pointing_device_task をオーバーライドしているため、常に true を返します。
-   return true;
+    //#ifdef POINTING_DEVICE_AUTO_MOUSE_ENABLE
+    //switch(get_highest_layer(remove_auto_mouse_layer(state, true))) {
+      //case 3:
+            //state = remove_auto_mouse_layer(state, false);
+            //set_auto_mouse_enable(false);
+            //break;
+        //default:
+            //set_auto_mouse_enable(true);
+            //break;
+    //}
+    //#endif    
+  
+    return state;
 }
 
-// layer_state_set_user 関数はそのまま
-// keymaps 配列もそのまま (レイヤー5の定義はまだ不要)
-// OLED表示の関数もそのまま
+void keyball_on_apply_motion_to_mouse_move(keyball_motion_t *m, report_mouse_t *r, bool is_left) {
+    // 現在のレイヤーを取得します。
+    uint8_t layer = get_highest_layer(layer_state);
 
+    // トラックボールの移動量のしきい値を設定します。
+    // この値より小さい移動は無視され、チャタリングなどを防止できます。
+    // 実機でのテストに基づいて調整してください。
+    int sensitivity_threshold = 5; // ZMKの 'tick' に相当する概念。調整が必要。
 
+    // レイヤー5の場合のみトラックボールの移動を処理します。(矢印キー)
+    if (layer == 5) {
+        // Custom logic for Layer 5 (Arrows)
+
+        // 使用する元の移動量を一時的に保存
+        int16_t original_delta_x = m->x;
+        int16_t original_delta_y = m->y;
+
+        // トラックボールの蓄積された移動量 m をゼロにする
+        // これにより、Keyball のデフォルトの処理がこの移動を使わないようにします。
+        m->x = 0;
+        m->y = 0;
+
+        // マウスレポート r の移動量もゼロにする（念のため）
+        r->x = 0;
+        r->y = 0;
+        r->v = 0; // スクロールもゼロにしておく
+
+        // しきい値を超えた移動量があるかチェックし、矢印キーをタップ
+        if (abs(original_delta_x) > sensitivity_threshold || abs(original_delta_y) > sensitivity_threshold) {
+            if (abs(original_delta_x) > abs(original_delta_y)) { // 水平移動が支配的
+                if (original_delta_x > sensitivity_threshold) {
+                    tap_code(KC_RIGHT);
+                } else if (original_delta_x < -sensitivity_threshold) {
+                    tap_code(KC_LEFT);
+                }
+            } else { // 垂直移動が支配的、または同じ
+                 if (original_delta_y < -sensitivity_threshold) { // Y- 方向 (UP)
+                    tap_code(KC_UP);
+                } else if (original_delta_y > sensitivity_threshold) { // Y+ 方向 (DOWN)
+                    tap_code(KC_DOWN);
+                }
+            }
+            // ZMKの 'wait-ms', 'tap-ms' のようなタイミング制御が必要な場合は、
+            // ここにタイマーや状態管理のロジックを追加する必要があります。
+        }
+    }
+    // レイヤーが5以外の場合、この関数内では特に何もしません。
+    // 関数から戻ると、Keyball のデフォルトの apply_motion_to_mouse_move/scroll 処理が、
+    // 変更されていない m のデータを使ってレポート r を生成し、送信します。
+    // これにより、レイヤー3でのスクロールや、その他のレイヤーでの通常のマウス移動が機能します。
+}
 
 #ifdef OLED_ENABLE
 
