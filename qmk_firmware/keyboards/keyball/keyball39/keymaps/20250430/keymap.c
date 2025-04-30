@@ -188,7 +188,7 @@ void keyball_on_apply_motion_to_mouse_scroll(keyball_motion_t *m, report_mouse_t
 
        // 計算された浮動小数点数のインデックスを整数に丸め、1から7の範囲にクランプ
        int dynamic_n = (int)roundf(dynamic_n_float);
-       dynamic_n = MAX(1, MIN(7, dynamic_n));
+       dynamic_n = MAX(1, MIN(10, dynamic_n));
 
        // 動的な除数を計算
        dynamic_div = 1 << (dynamic_n - 1);
