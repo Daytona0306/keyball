@@ -92,7 +92,7 @@ bool pointing_device_task(void) {
                tap_code(KC_LEFT);
             }
          } else { // 垂直移動が支配的、または同じ
-             if (original_delta_y < -sensitivity_threshold) { // Y- 方向
+             if (original_delta_y < -sensitivity_threshold) { // Y- 方向
                tap_code(KC_UP);
             } else if (original_delta_y > sensitivity_threshold) { // Y+ 方向
                tap_code(KC_DOWN);
