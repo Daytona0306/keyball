@@ -66,11 +66,9 @@ bool pointing_device_task(void) {
    // 実機でのテストに基づいて調整してください。
    int sensitivity_threshold = 5; // ZMKの 'tick' に相当する概xxxxxx念
 
-    bool handled = false; // ポインティングデバイス処理を独自に処理したかを示すフラグ
 
    // レイヤー5の場合のみトラックボールの移動を処理します。(矢印キー)
    if (layer == 5) {
-        handled = true; // レイヤー5は独自処理
 
       // 元の移動量を一時的に保存
       int8_t original_delta_x = mouse_report.x;
