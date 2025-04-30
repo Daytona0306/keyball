@@ -74,43 +74,53 @@ static void adjust_mouse_speed(keyball_motion_t *m) {
 
 // clang-format off
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
-  // keymap for default (VIA)
+  // Layer 0: Base Layer (from PDF Cheat Sheet)
   [0] = LAYOUT_universal(
-    KC_Q     , KC_W     , KC_E     , KC_R     , KC_T     ,                            KC_Y     , KC_U     , KC_I     , KC_O     , KC_P     ,
-    KC_A     , KC_S     , KC_D     , KC_F     , KC_G     ,                            KC_H     , KC_J     , KC_K     , KC_L     , KC_SCLN  ,
-    KC_Z     , KC_X     , KC_C     , KC_V     , KC_B     ,                            KC_N     , KC_M     , KC_COMM  , KC_DOT   , KC_SLSH  ,
-    KC_LCTL  , KC_LGUI  , KC_LALT  ,LT(1,KC_LNG2),LT(2,KC_SPC),LT(3,KC_LNG1),KC_BSPC,LT(2,KC_ENT),MO(5)    ,KC_RALT,KC_RGUI, KC_RSFT // <<== 例: MO(5) を右下のキーに割り当て
+    KC_Q,    KC_W,    KC_E,    KC_R,    KC_T,                        KC_Y,    KC_U,    KC_I,    KC_O,    KC_P,
+    KC_A,    KC_S,    KC_D,    KC_F,    KC_G,                        KC_H,    KC_J,    KC_K,    KC_L,    KC_SCLN,
+    KC_Z,    KC_X,    KC_C,    KC_V,    KC_B,                        KC_N,    KC_M,    KC_COMM, KC_DOT,  KC_SLSH,
+    KC_LCTL, KC_LGUI, KC_LALT, MO(4),   LT(2,KC_SPC),LT(3,KC_LNG1),  KC_BSPC, LT(2,KC_ENT),MO(5), KC_RALT, KC_RGUI, KC_RSFT
   ),
 
+  // Layer 1: Shift Layer (from PDF Cheat Sheet) - Assumed to be Shift + Base Layer
   [1] = LAYOUT_universal(
-    S(KC_Q)   , S(KC_W) , S(KC_E)  , S(KC_R)  , S(KC_T)  ,                            S(KC_Y)  , S(KC_U)  , S(KC_I)  , S(KC_O)  , S(KC_P)  ,
-    S(KC_A)   , S(KC_S) , S(KC_D)  , S(KC_F)  , S(KC_G)  ,                            S(KC_H)  , S(KC_J)  , S(KC_K)  , S(KC_L)  , KC_QUOT  ,
-    S(KC_Z)   , S(KC_X) , S(KC_C)  , S(KC_V)  , S(KC_B)  ,                            S(KC_N)  , S(KC_M)  ,S(KC_COMM), S(KC_DOT),S(KC_SLSH),
-    KC_LCTL   , KC_LGUI , KC_LALT  , _______  , _______  , _______  ,      _______  , _______  , _______  , KC_RALT  , KC_RGUI  , KC_RSFT
+    S(KC_Q), S(KC_W), S(KC_E), S(KC_R), S(KC_T),                     S(KC_Y), S(KC_U), S(KC_I), S(KC_O), S(KC_P),
+    S(KC_A), S(KC_S), S(KC_D), S(KC_F), S(KC_G),                     S(KC_H), S(KC_J), S(KC_K), S(KC_L), KC_QUOT, // PDF shows ' for KC_QUOT
+    S(KC_Z), S(KC_X), S(KC_C), S(KC_V), S(KC_B),                     S(KC_N), S(KC_M), S(KC_COMM),S(KC_DOT),S(KC_SLSH),
+    KC_LCTL, KC_LGUI, KC_LALT, _______, _______, _______,           _______, _______, _______, KC_RALT, KC_RGUI, KC_RSFT
   ),
 
+  // Layer 2: Number/Symbol/Mouse Layer (from PDF Cheat Sheet - Image 5 interpretation)
   [2] = LAYOUT_universal(
-    _______   , KC_7    , KC_8     , KC_9     , _______  ,                            _______  , KC_LEFT  , KC_UP    , KC_RGHT  , _______  ,
-    _______   , KC_4    , KC_5     , KC_6     ,S(KC_SCLN),                            KC_PGUP  , KC_BTN1  , KC_DOWN  , KC_BTN2  , KC_BTN3  ,
-    _______   , KC_1    , KC_2     , KC_3     ,S(KC_MINS),                            KC_PGDN  , _______  , _______  , _______  , _______  ,
-    _______   , KC_0    , KC_DOT   , _______  , _______  , _______  ,      KC_DEL   , _______  , _______  , _______  , _______  , _______
+    S(KC_1), S(KC_2), S(KC_3), S(KC_4), S(KC_5),                     KC_KP_7, KC_KP_8, KC_KP_9, KC_KP_SLASH, M(3),   // Image 5 R0: S(1)-S(5) | KP7-KP/, Macro 4
+    S(KC_6), S(KC_7), S(KC_8), S(KC_9), S(KC_0),                     KC_KP_4, KC_KP_5, KC_KP_6, KC_KP_ASTERISK,M(4),   // Image 5 R1: S(6)-S(0) | KP4-KP*, Macro 5
+    S(KC_MINS),S(KC_EQUAL),S(KC_BSLS), M(1),    M(0),                KC_KP_1, KC_KP_2, KC_KP_3, KC_KP_MINUS, M(2),   // Image 5 R2: S(-)=,~,\, M1,M0 | KP1-KP-, Macro 3
+    KC_CAPS, LCTL(KC_6),LCTL(KC_2), KC_LSFT, KC_LALT, KC_TAB,        KC_LANG1,S(KC_LANG2),KC_DEL,  KC_RALT, KC_RGUI, KC_RSFT // Image 5 R3: Mods, Lang, Del, Right Mods
   ),
 
+  // Layer 3: Function/RGB/CPI/Scroll Div Layer (Prioritizing user's previous functional L3 and PDF text over potentially inconsistent images 6/7)
   [3] = LAYOUT_universal(
     RGB_TOG  , _______  , _______  , _______  ,  _______  ,                           RGB_M_P  , RGB_M_B  , RGB_M_R  , RGB_M_SW , RGB_M_SN ,
     RGB_MOD  , RGB_HUI  , RGB_SAI  , RGB_VAI  ,  SCRL_DVI ,                           RGB_M_K  , RGB_M_X  , RGB_M_G  , RGB_M_T  , RGB_M_TW ,
     RGB_RMOD , RGB_HUD  , RGB_SAD  , RGB_VAD  ,  SCRL_DVD ,                           CPI_D1K  , CPI_D100 , CPI_I100 , CPI_I1K  , KBC_SAVE ,
     QK_BOOT    , KBC_RST  , _______  , _______  ,  _______  , _______  ,     _______  , _______  , _______  , _______  , KBC_RST  , QK_BOOT
   ),
-  // <<== レイヤー5の定義をここに追加
-  // このレイヤーに切り替えるためのキー（例: MO(5) など）を
-  // 他のレイヤー（例: レイヤー0）に設定する必要があります。
-  [5] = LAYOUT_universal( // レイヤー5 (トラックボール矢印キー)
-    _______, _______, _______, _______, _______,          _______, _______, _______, _______, _______,
-    _______, _______, _______, _______, _______,          _______, _______, _______, _______, _______,
-    _______, _______, _______, _______, _______,          _______, _______, _______, _______, _______,
-    _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______
-  ),
+
+  // Layer 4: Num Pad / Audio / Function Keys (from PDF Cheat Sheet - Image 8 & 9 interpretation)
+  [4] = LAYOUT_universal(
+    KC_ESC,  KC_F1,   KC_F2,   KC_F3,   KC_F4,                       TO(0),   KC_KP_7, KC_KP_8, KC_KP_9, KC_KP_SLASH,
+    LCTL(KC_A),KC_F5,   KC_F6,   KC_F7,   KC_F8,                       KC_KP_4, KC_KP_5, KC_KP_6, KC_KP_ASTERISK,_______,
+    KC_LSFT, KC_F9,   KC_F10,  KC_F11,  KC_F12,                      KC_KP_1, KC_KP_2, KC_KP_3, KC_KP_MINUS, _______,
+    TO(4),   _______, _______, _______, _______, _______,           KC_KP_0, KC_KP_DOT, KC_KP_PLUS,KC_KP_ENTER,KC_DEL,  _______
+  ),
+
+  // Layer 5: Trackball Arrow Keys / Navigation / Edit (from PDF Cheat Sheet - Image 10 interpretation)
+  [5] = LAYOUT_universal( // レイヤー5 (トラックボール矢印キー)
+    KC_INS,  KC_HOME, KC_UP,   KC_END,  KC_PGUP,                     _______, _______, _______, _______, _______,
+    KC_LEFT, _______, _______, _______, _______,                     _______, _______, _______, _______, _______, // Trackball movement handled by code override
+    KC_DEL,  KC_END,  KC_DOWN, KC_PGDN, _______,                     _______, _______, _______, _______, _______,
+    _______, _______, _______, _______, _______, _______,           _______, _______, _______, _______, _______, _______ // Bottom row seems unassigned in PDF L5
+  ),
 };
 // clang-format on
 
@@ -172,7 +182,7 @@ void keyball_on_apply_motion_to_mouse_move(keyball_motion_t *m, report_mouse_t *
         // このコードは keyball.c の keyball_on_apply_motion_to_mouse_move のデフォルト実装からコピーしています。
         // これにより、Layer 5 以外のレイヤーで通常のマウス移動が機能するようになります。
 
-        // <<== adjust_mouse_speed の呼び出しを追加
+        // adjust_mouse_speed の呼び出しを追加
         adjust_mouse_speed(m);
 
         #if KEYBALL_MODEL == 61 || KEYBALL_MODEL == 39 || KEYBALL_MODEL == 147 || KEYBALL_MODEL == 44
@@ -211,7 +221,7 @@ void keyball_on_apply_motion_to_mouse_scroll(keyball_motion_t *m, report_mouse_t
     // Layer 3 で keyball.scroll_mode が true に設定されている前提です。
     // この関数は Keyball 内部で keyball.scroll_mode が true の場合に呼ばれます。
 
-    // <<== スクロールにも adjust_mouse_speed を適用
+    // スクロールにも adjust_mouse_speed を適用
     adjust_mouse_speed(m);
 
     // 以下は Keyball のデフォルトのスクロール処理ロジックをコピーしたものです。
