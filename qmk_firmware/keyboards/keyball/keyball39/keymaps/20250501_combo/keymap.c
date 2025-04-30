@@ -26,9 +26,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 static int16_t divmod16(int16_t *v, int16_t div);
 static inline int8_t clip2int8(int16_t v);
 
-// コンボターム（ミリ秒）を設定します。必要に応じて調整してください。
-#define COMBO_TERM 50
-
 // コンボ定義 - enumを使用した方法
 enum combos {
   TN_TO_LNG1, // T + N で KC_LNG1 を出力
