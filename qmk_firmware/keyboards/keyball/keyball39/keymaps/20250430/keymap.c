@@ -23,9 +23,21 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // Keyball の lib ディレクトリからのパスを指定
 #include "lib/keyball/keyball.h"
 
+// 数学関数（expf, sqrtf など）を使うために必要
+#include <math.h>
+
 // マクロ機能を使う場合は必要になる場合がありますが、今回は M() を KC_NO に置き換えているため必須ではありません
 // #include "action_macro.h"
 
+
+// === カスタマイズ可能な設定値 ===
+
+// スクロール加速の感度 (1-10程度で調整)
+// ZMKの CONFIG_PMW3610_SCROLL_SENSITIVITY に相当
+#define QMK_SCROLL_SENSITIVITY 2.0f // デフォルトは2.0f。浮動小数点数として定義
+
+
+// === ヘルパー関数 ===
 
 // Keyball デフォルト処理で使用されている静的ヘルパー関数をコピー
 // divmod16 は使用されているため残します
@@ -39,8 +51,9 @@ static inline int8_t clip2int8(int16_t v) {
     return (v) < -127 ? -127 : (v) > 127 ? 127 : (int8_t)v;
 }
 
-// Keyball デフォルト処理で使用されている速度調整関数をコピー
-// これも keyball.c から持ってきています
+// Keyball デフォルト処理で使用されている速度調整関数
+// シグモイド加速導入に伴い、スクロール処理ではこの関数は直接使用しなくなりますが、
+// Layer 5以外のマウス移動処理では引き続き使用します。
 static void adjust_mouse_speed(keyball_motion_t *m) {
     int16_t movement_size = abs(m->x) + abs(m->y);
 
@@ -105,14 +118,13 @@ layer_state_t layer_state_set_user(layer_state_t state) {
     keyball_set_scroll_mode(get_highest_layer(state) == 3);
 
     // レイヤー5のトラックボール矢印キー機能を使う場合、Layer 5に切り替わったらスクロールモードを無効にする必要があります。
-    // あなたの指定により keymaps 配列で Layer 4, 5 は定義されていませんが、
+    // keymaps 配列で Layer 4, 5 は定義されていませんが、
     // keyball_on_apply_motion_to_mouse_move 関数で Layer 5 をチェックしているため、
     // Layer 5 に切り替えるキーを割り当てていれば、トラックボールは矢印キーとして機能します。
     // Layer 5 のチェックは get_highest_layer(state) == 5 で行います。
     if (get_highest_layer(state) == 5) {
         keyball_set_scroll_mode(false);
     }
-
 
     // (OLED表示など、他のレイヤー切り替え時の処理が必要であればここに追加)
 
@@ -127,7 +139,7 @@ void keyball_on_apply_motion_to_mouse_move(keyball_motion_t *m, report_mouse_t *
 
     // トラックボールの移動量のしきい値を設定します。
     // 実機でのテストに基づいて調整してください。
-    int sensitivity_threshold = 1; // ZMKの 'tick' に相当する概念。調整が必要。
+    int sensitivity_threshold = 2; // ZMKの 'tick' に相当する概念。調整が必要。
 
     // レイヤー5の場合のみトラックボールの移動を処理します。(矢印キー)
     if (layer == 5) {
@@ -148,7 +160,7 @@ void keyball_on_apply_motion_to_mouse_move(keyball_motion_t *m, report_mouse_t *
         r->v = 0; // スクロールもゼロにしておく
 
         // しきい値を超えた移動量があるかチェックし、矢印キーをタップ
-        if (abs(original_delta_x) > sensitivity_threshold || abs(original_delta_y) > sensitivity_threshold) { // <<== タイプミスを修正
+        if (abs(original_delta_x) > sensitivity_threshold || abs(original_delta_y) > sensitivity_threshold) {
             // レイヤー5での矢印キーマッピング (ユーザーの観測に合わせた軸入れ替え)
             // 元のX移動量(horizontal)をVertical Arrow Keysに、元のY移動量(vertical)をHorizontal Arrow Keysにマップします。
             if (abs(original_delta_x) > abs(original_delta_y)) { // 支配的な元のX移動 (Physical Left/Right)
@@ -197,42 +209,89 @@ void keyball_on_apply_motion_to_mouse_move(keyball_motion_t *m, report_mouse_t *
 }
 
 // Keyball の keyball_on_apply_motion_to_mouse_scroll 弱い関数をオーバーライド
-// スクロールに加速度を適用
+// スクロールにシグモイド関数を使った加速度を適用
 void keyball_on_apply_motion_to_mouse_scroll(keyball_motion_t *m, report_mouse_t *r, bool is_left) {
     // レイヤー3（スクロールモード）の場合のみ処理を行います。
     // Layer 3 で keyball.scroll_mode が true に設定されている前提です。
     // この関数は Keyball 内部で keyball.scroll_mode が true の場合に呼ばれます。
 
-    // スクロールにも adjust_mouse_speed を適用
-    adjust_mouse_speed(m);
+    // シグモイド加速を適用
+    // Based on ZMK code provided by user
+    static uint32_t last_scroll_time = 0; // Static variable to store the time of the last scroll event (using uint32_t for QMK time)
+    uint32_t current_time = timer_read(); // Use QMK's timer_read() for milliseconds
 
-    // 以下は Keyball のデフォルトのスクロール処理ロジックをコピーしたものです。
+    // Calculate movement magnitude (using float for calculation)
+    float movement = sqrtf((float)m->x * m->x + (float)m->y * m->y); // Use sqrtf for float
+
+    float accel_x = m->x;
+    float accel_y = m->y;
+
+    // Calculate time delta (handle initial call and timer wrap-around)
+    uint32_t delta_time = timer_elapsed(last_scroll_time);
+
+    // Calculate speed (movement per millisecond)
+    if (delta_time > 0) { // Avoid division by zero
+        float speed = movement / (float)delta_time;
+
+        // Sigmoid acceleration function (adapted from ZMK code)
+        // ZMK code uses a base sensitivity multiplier: acceleration *= base_sensitivity;
+        // base_sensitivity = (float)CONFIG_PMW3610_SCROLL_SENSITIVITY / 2.5f;
+
+        float base_sensitivity = QMK_SCROLL_SENSITIVITY / 2.5f;
+        // ZMK formula: 1.0f + 9.0f * (1.0f / (1.0f + expf(-0.5f * (speed - 8.0f))))
+        // Base acceleration 1.0x to 10.0x, centered around speed 8
+        float acceleration_factor = 1.0f / (1.0f + expf(-0.5f * (speed - 8.0f)));
+        float acceleration = 1.0f + 9.0f * acceleration_factor;
+
+        // Apply sensitivity
+        acceleration *= base_sensitivity;
+
+        // Apply acceleration factor to original deltas
+        accel_x = (float)m->x * acceleration;
+        accel_y = (float)m->y * acceleration;
+
+        // Maintain small movements (optional, based on ZMK code - keeping original delta for <= 1)
+        if (abs(m->x) <= 1) accel_x = m->x;
+        if (abs(m->y) <= 1) accel_y = m->y;
+
+    }
+
+    // Update last scroll time
+    last_scroll_time = current_time;
+
+    // Accumulate accelerated deltas back into m? Or use accel_x/y directly for report?
+    // The original Keyball logic (and divmod16) works with m as the accumulator.
+    // Update m with the calculated accelerated deltas before the scroll tick check.
+    m->x = (int16_t)roundf(accel_x); // Convert back to int16, using roundf for better accuracy
+    m->y = (int16_t)roundf(accel_y); // Convert back to int16, using roundf for better accuracy
+
+
+    // The rest of the scroll logic from the original override remains to handle scroll ticks and reporting
     // consume motion of trackball.
     // keyball_get_scroll_div() は keyball.h をインクルードしていれば使えます。
+    // 注: divmod16 は m->x/y を変更して残余を保持します。
     int16_t div = 1 << (keyball_get_scroll_div() - 1);
     int16_t x = divmod16(&m->x, div);
     int16_t y = divmod16(&m->y, div);
 
     // apply to mouse report.
-#if KEYBALL_MODEL == 61 || KEYBALL_MODEL == 39 || KEYBALL_MODEL == 147 || KEYBALL_MODEL == 44
-    r->h = clip2int8(y);
-    r->v = -clip2int8(x);
-    if (is_left) {
-        r->h = -r->h;
-        r->v = -r->v;
-    }
-#elif KEYBALL_MODEL == 46
-    r->h = clip2int8(x);
-    r->v = clip2int8(y);
-#else
-#    error("unknown Keyball model")
-#endif
+    // r->h と r->v にスクロール量を格納
+    #if KEYBALL_MODEL == 61 || KEYBALL_MODEL == 39 || KEYBALL_MODEL == 147 || KEYBALL_MODEL == 44
+        r->h = clip2int8(y); // Horizontal scroll from Y movement (Keyball default mapping)
+        r->v = -clip2int8(x); // Vertical scroll from X movement (Keyball default mapping)
+        if (is_left) {
+            r->h = -r->h;
+            r->v = -r->v;
+        }
+    #elif KEYBALL_MODEL == 46
+        r->h = clip2int8(x); // Horizontal scroll from X movement
+        r->v = clip2int8(y); // Vertical scroll from Y movement
+    #else
+    #    error("unknown Keyball model")
+    #endif
 
-    // KeyballのデフォルトにはScroll snappingのロジックも含まれますが、
-    // 複雑になるためここでは省略します。必要に応じてkeyball.cからコピーしてください。
-    // スクロール後に蓄積された移動量をクリア
-    m->x = 0;
-    m->y = 0;
+    // ZMKコードにあった残り値の減衰処理やイベントレート制限はここには含めていません。
+    // Keyballの既存ロジックが divmod16 で残余を扱います。
 
     // 関数から戻ると、Keyball の calling code が r の内容を使ってレポートを送信します。
 }
