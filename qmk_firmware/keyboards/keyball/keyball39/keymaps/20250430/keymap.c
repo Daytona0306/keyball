@@ -21,6 +21,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "lib/keyball/keyball.h"
 #include <math.h> // expf, sqrtf, roundf に必要
 
+// 関数プロトタイプの宣言 (Forward Declarations)
+// これらの関数が後で定義されていることをコンパイラに知らせます。
+static int16_t divmod16(int16_t *v, int16_t div);
+static inline int8_t clip2int8(int16_t v);
+
 // adjust_mouse_speed 関数を再度定義し、含めます。
 static void adjust_mouse_speed(keyball_motion_t *m) {
     int16_t movement_size = abs(m->x) + abs(m->y);
@@ -180,6 +185,18 @@ void keyball_on_apply_motion_to_mouse_move(keyball_motion_t *m, report_mouse_t *
     }
 }
 
+// divmod16 と clip2int8 の関数定義
+static int16_t divmod16(int16_t *v, int16_t div) {
+    int16_t r = *v / div;
+    *v -= r * div;
+    return r;
+}
+
+static inline int8_t clip2int8(int16_t v) {
+    return (v) < -127 ? -127 : (v) > 127 ? 127 : (int8_t)v;
+}
+
+
 void keyball_on_apply_motion_to_mouse_scroll(keyball_motion_t *m, report_mouse_t *r, bool is_left) {
     static uint32_t last_scroll_time = 0;
     uint32_t current_time = timer_read();
@@ -247,6 +264,7 @@ void keyball_on_apply_motion_to_mouse_scroll(keyball_motion_t *m, report_mouse_t
     int16_t y = divmod16(&m->y, dynamic_div);
 
     // === スクロールスナップモードの適用 ===
+    // keyball_scroll_snap_mode_t は lib/keyball/keyball.h で宣言されている型です
     keyball_scroll_snap_mode_t snap_mode = keyball_get_scroll_snap_mode();
 
     if (snap_mode == KEYBALL_SCROLL_SNAP_MODE_VERTICAL) {
