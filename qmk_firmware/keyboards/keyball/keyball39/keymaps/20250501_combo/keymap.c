@@ -26,6 +26,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 static int16_t divmod16(int16_t *v, int16_t div);
 static inline int8_t clip2int8(int16_t v);
 
+// コンボターム（ミリ秒）を設定します。必要に応じて調整してください。
+#define COMBO_TERM 50
+
+// コンボ定義
+const uint16_t tn_combo[] PROGMEM = {KC_T, KC_N, COMBO_END};
+const uint16_t ao_combo[] PROGMEM = {KC_A, KC_O, COMBO_END};
+
+combo_t key_combos[] __attribute__ ((section (".combos"))) = {
+  COMBO(tn_combo, KC_LNG1),
+  COMBO(ao_combo, KC_LNG2),
+};
+
 // adjust_mouse_speed 関数を再度定義し、含めます。
 static void adjust_mouse_speed(keyball_motion_t *m) {
     int16_t movement_size = abs(m->x) + abs(m->y);
