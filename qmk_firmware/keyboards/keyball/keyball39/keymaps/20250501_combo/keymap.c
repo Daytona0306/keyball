@@ -23,19 +23,19 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 // コンボ定義 - enumを使用した方法
 enum combos {
-  TN_TO_LNG1, // T + N で KC_LNG1 を出力
-  AO_TO_LNG2, // A + O で KC_LNG2 を出力
+  DM_TO_LNG1, 
+  CV_TO_LNG2, 
   NUM_COMBOS
 };
 
 // コンボを構成するキーの配列を定義
-const uint16_t PROGMEM tn_keys[] = {KC_T, KC_N, COMBO_END};
-const uint16_t PROGMEM ao_keys[] = {KC_A, KC_O, COMBO_END};
+const uint16_t PROGMEM dm_keys[] = {KC_D, KC_M, COMBO_END};
+const uint16_t PROGMEM cv_keys[] = {KC_C, KC_V, COMBO_END};
 
 // combo_t 型の配列でコンボを定義。enum名をインデックスとして使用します。
 combo_t key_combos[NUM_COMBOS] __attribute__ ((section (".combos"))) = {
-  [TN_TO_LNG1] = COMBO(tn_keys, KC_LNG1),
-  [AO_TO_LNG2] = COMBO(ao_keys, KC_LNG2),
+  [DM_TO_LNG1] = COMBO(dm_keys, KC_LNG1),
+  [CV_TO_LNG2] = COMBO(cv_keys, KC_LNG2),
 };
 
 // 関数プロトタイプの宣言 (Forward Declarations)
