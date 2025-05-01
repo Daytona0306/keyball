@@ -230,8 +230,8 @@ void keyball_on_apply_motion_to_mouse_scroll(keyball_motion_t *m, report_mouse_t
              // sigmoid_term 0.5 から 1 の範囲を base_n から 1 に線形補間
              dynamic_n_float = (float)base_n + ((float)1.0f - (float)base_n) * (sigmoid_term - 0.5f) * 2.0f;
         } else { // 速度が中心 (80.0) 未満の場合 (低速側)
-            // sigmoid_term 0 から 0.5 の範囲を 7 から base_n に線形補間
-            dynamic_n_float = (float)7.0f + ((float)base_n - (float)7.0f) * (sigmoid_term * 2.0f);
+            // sigmoid_term 0 から 0.5 の範囲を 10 から base_n に線形補間
+            dynamic_n_float = (float)10.0f + ((float)base_n - (float)10.0f) * (sigmoid_term * 2.0f);
         }
 
         // 計算された浮動小数点数のインデックスを整数に丸め、1から7の範囲にクランプ
