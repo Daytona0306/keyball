@@ -91,75 +91,54 @@ layer_state_t layer_state_set_user(layer_state_t state) {
 
 void keyball_on_apply_motion_to_mouse_move(keyball_motion_t *m, report_mouse_t *r, bool is_left) {
     uint8_t layer = get_highest_layer(layer_state);
-    int sensitivity_threshold = 2; // 動き始めの閾値。必要なら調整。
-    int key_tap_divisor = 2.5; // 閾値を超えた移動量を割って、タップ回数を決める係数。調整で感触が変わる。
-    int max_taps = 1; // 一回の処理で生成する最大タップ数。無限ループ防止用。
-    int tap_delay_ms = 10; // 連続タップの間の遅延(ms)。必要なら調整。
 
+    // Layer 5 (カーソルキーモード) の調整パラメータ
+    // 連続での移動を不要とするため、max_taps_per_event は 1 に設定します。
+    // 主な調整は sensitivity_threshold と key_tap_divisor で行います。
+    int layer5_sensitivity_threshold = 3;  // 動き始めの閾値。この値より小さい移動は無視されます。大きくすると細かい動きを無視しやすくなります。
+    float layer5_key_tap_divisor = 4.0;    // 閾値を超えた移動量と組み合わせて、1タップを生成する感度を決定。大きいほど鈍く、小さいほど敏感になります。
+    int layer5_max_taps_per_event = 1; // ★ここを 1 に設定 ★ 一回のトラックボールイベントで生成する最大タップ数を1に制限
+    int layer5_tap_delay_ms = 0;     // ★ここを 0 または小さい値に ★ 1タップしか出ないので大きな意味はないが、念のため。
 
     if (layer == 5) {
-        // レイヤー5でも adjust_mouse_speed を適用
-        adjust_mouse_speed(m);
+        // ... (Layer 5 の既存処理。raw_delta_x/y を取得し、m をクリアする部分は同じ) ...
+        int16_t raw_delta_x = m->x;
+        int16_t raw_delta_y = m->y;
+        m->x = 0; m->y = 0;
+        r->x = 0; r->y = 0; r->v = 0;
 
-        // adjust_mouse_speed 適用後の移動量を使用
-        int16_t adjusted_delta_x = m->x;
-        int16_t adjusted_delta_y = m->y;
-
-        // トラックボールの蓄積された移動量 m をゼロにする
-        // レポートには使わないためクリア。adjust_mouse_speed 適用後にクリアする必要がある。
-        m->x = 0;
-        m->y = 0;
-
-
-        // マウスレポート r の移動量もゼロにする（念のため）
-        r->x = 0;
-        r->y = 0;
-        r->v = 0; // スクロールもゼロにしておく
-
-        // 速度調整された移動量が閾値を超えているかチェック
-        if (abs(adjusted_delta_x) > sensitivity_threshold || abs(adjusted_delta_y) > sensitivity_threshold) {
-
-            // 支配的な軸（移動量が大きい方）を判断
-            if (abs(adjusted_delta_x) > abs(adjusted_delta_y)) {
-                // 水平方向の移動が支配的 (物理的な左右)
-                int effective_delta = abs(adjusted_delta_x) - sensitivity_threshold; // 閾値を超えた分の移動量 (速度調整後)
+        if (abs(raw_delta_x) > layer5_sensitivity_threshold || abs(raw_delta_y) > layer5_sensitivity_threshold) {
+            if (abs(raw_delta_x) > abs(raw_delta_y)) {
+                int effective_delta = abs(raw_delta_x) - layer5_sensitivity_threshold;
                 if (effective_delta > 0) {
-                    int num_taps = effective_delta / key_tap_divisor; // 実効移動量を割ってタップ回数を決定
-                    num_taps = MAX(1, MIN(max_taps, num_taps)); // タップ回数を最低1回、最大 max_taps にクランプ
+                    int num_taps = (int)(effective_delta / layer5_key_tap_divisor);
+                    // max_taps_per_event が 1 なので、 num_taps がどう計算されても最終的に 1 にクランプされます
+                    num_taps = MAX(1, MIN(layer5_max_taps_per_event, num_taps));
 
-                    // 該当する矢印キーを複数回タップ
-                    uint16_t keycode = (adjusted_delta_x < 0) ? KC_UP : KC_DOWN; // 速度調整後 delta を使用. 負の値が上、正の値が下に対応するように調整 (KeyballのY方向は反転することが多いですが、Layer 5はキー入力なのでXYそのまま判断)
-                    if (is_left) { // 左手側キーボードの場合、トラックボールの物理的な左右が逆転するため方向を反転
-                         keycode = (adjusted_delta_x < 0) ? KC_DOWN : KC_UP;
-                    }
+                    uint16_t keycode = (raw_delta_x < 0) ? KC_UP : KC_DOWN;
+                    if (is_left) { keycode = (raw_delta_x < 0) ? KC_DOWN : KC_UP; }
 
-
-                    for (int i = 0; i < num_taps; i++) {
+                    for (int i = 0; i < num_taps; i++) { // num_taps は常に 1
                         tap_code(keycode);
-                        if (tap_delay_ms > 0) {
-                            wait_ms(tap_delay_ms); // 必要に応じてタップ間に遅延を入れる
+                        if (layer5_tap_delay_ms > 0) { // tap_delay_ms は 0 または小さい値
+                            wait_ms(layer5_tap_delay_ms);
                         }
                     }
                 }
-
-            } else {
-                // 垂直方向の移動が支配的 (物理的な上下)
-                int effective_delta = abs(adjusted_delta_y) - sensitivity_threshold; // 閾値を超えた分の移動量 (速度調整後)
+            } else { // 垂直方向が支配的
+                 int effective_delta = abs(raw_delta_y) - layer5_sensitivity_threshold;
                  if (effective_delta > 0) {
-                    int num_taps = effective_delta / key_tap_divisor; // 実効移動量を割ってタップ回数を決定
-                    num_taps = MAX(1, MIN(max_taps, num_taps)); // タップ回数を最低1回、最大 max_taps にクランプ
+                    int num_taps = (int)(effective_delta / layer5_key_tap_divisor);
+                    // max_taps_per_event が 1 なので、 num_taps がどう計算されても最終的に 1 にクランプされます
+                    num_taps = MAX(1, MIN(layer5_max_taps_per_event, num_taps));
 
-                    // 該当する矢印キーを複数回タップ
-                    uint16_t keycode = (adjusted_delta_y < 0) ? KC_LEFT : KC_RIGHT; // 速度調整後 delta を使用. 負の値が左、正の値が右に対応するように調整 (KeyballのX方向はそのまま判断)
-                     if (is_left) { // 左手側キーボードの場合、トラックボールの物理的な上下が逆転するため方向を反転
-                         keycode = (adjusted_delta_y < 0) ? KC_RIGHT : KC_LEFT;
-                    }
+                    uint16_t keycode = (raw_delta_y < 0) ? KC_LEFT : KC_RIGHT;
+                     if (is_left) { keycode = (raw_delta_y < 0) ? KC_RIGHT : KC_LEFT; }
 
-
-                    for (int i = 0; i < num_taps; i++) {
+                    for (int i = 0; i < num_taps; i++) { // num_taps は常に 1
                         tap_code(keycode);
-                        if (tap_delay_ms > 0) {
-                            wait_ms(tap_delay_ms); // 必要に応じてタップ間に遅延を入れる
+                         if (layer5_tap_delay_ms > 0) { // tap_delay_ms は 0 または小さい値
+                            wait_ms(layer5_tap_delay_ms);
                         }
                     }
                 }
