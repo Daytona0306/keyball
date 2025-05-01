@@ -25,7 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 enum combos {
   TN_TO_LNG1, // T + N で KC_LNG1 を出力
   AO_TO_LNG2, // A + O で KC_LNG2 を出力
-　NUM_COMBOS
+  NUM_COMBOS
 };
 
 // コンボを構成するキーの配列を定義
