@@ -93,73 +93,69 @@ void keyball_on_apply_motion_to_mouse_move(keyball_motion_t *m, report_mouse_t *
     uint8_t layer = get_highest_layer(layer_state);
 
     // Layer 5 (カーソルキーモード) の調整パラメータ
-    // 連続での移動を不要とするため、max_taps_per_event は 1 に設定します。
-    // 主な調整は sensitivity_threshold と key_tap_divisor で行います。
-    int layer5_sensitivity_threshold = 3;  // 動き始めの閾値。この値より小さい移動は無視されます。大きくすると細かい動きを無視しやすくなります。
-    float layer5_key_tap_divisor = 100.0;    // 閾値を超えた移動量と組み合わせて、1タップを生成する感度を決定。大きいほど鈍く、小さいほど敏感になります。
-    int layer5_max_taps_per_event = 1; // ★ここを 1 に設定 ★ 一回のトラックボールイベントで生成する最大タップ数を1に制限
-    int layer5_tap_delay_ms = 0;     // ★ここを 0 または小さい値に ★ 1タップしか出ないので大きな意味はないが、念のため。
+    // 連続での移動を不要とし、1回の動きで1ステップ移動させるための調整
+    // ★★★ 最も重要な調整パラメータ ★★★
+    int layer5_step_threshold = 15; // 1回のタップ（1ステップ）をトリガーするために必要なトラックボール移動量の「単位」。
+                                   // この値を大きくすると、1タップに必要な物理的な移動量が大きくなり、鈍感になります。小さくすると敏感になります。
+                                   // 例えば、10 なら 10 単位の移動で 1タップ、 30 なら 30 単位の移動で 1タップ発生。
+
+    // Layer 5 のその他のパラメータ (max_taps_per_event, tap_delay_ms) は、
+    // この新しいロジックではほとんど意味を持たなくなるため削除または無視できます。
+    // int layer5_max_taps_per_event = 1; // 不要になる
+    // int layer5_tap_delay_ms = 0;     // 不要になる
 
     if (layer == 5) {
-        // ... (Layer 5 の既存処理。raw_delta_x/y を取得し、m をクリアする部分は同じ) ...
-        int16_t raw_delta_x = m->x;
-        int16_t raw_delta_y = m->y;
-        m->x = 0; m->y = 0;
-        r->x = 0; r->y = 0; r->v = 0;
+        // Layer 5 では adjust_mouse_speed を使用しない
+        // adjust_mouse_speed(m); // この行は削除またはコメントアウトされたまま
 
-        if (abs(raw_delta_x) > layer5_sensitivity_threshold || abs(raw_delta_y) > layer5_sensitivity_threshold) {
-            if (abs(raw_delta_x) > abs(raw_delta_y)) {
-                int effective_delta = abs(raw_delta_x) - layer5_sensitivity_threshold;
-                if (effective_delta > 0) {
-                    int num_taps = (int)(effective_delta / layer5_key_tap_divisor);
-                    // max_taps_per_event が 1 なので、 num_taps がどう計算されても最終的に 1 にクランプされます
-                    num_taps = MAX(1, MIN(layer5_max_taps_per_event, num_taps));
+        // m->x, m->y には前回のレポートからの蓄積された移動量が入っている。
+        // divmod16 を使用して、蓄積量から「ステップ数」を計算し、剰余を m->x/y に残す。
+        int steps_x = divmod16(&m->x, layer5_step_threshold);
+        int steps_y = divmod16(&m->y, layer5_step_threshold);
 
-                    uint16_t keycode = (raw_delta_x < 0) ? KC_UP : KC_DOWN;
-                    if (is_left) { keycode = (raw_delta_x < 0) ? KC_DOWN : KC_UP; }
+        // マウスレポート r の移動量はゼロにする（キー入力で制御するため）
+        r->x = 0;
+        r->y = 0;
+        r->v = 0; // スクロールもゼロにしておく
 
-                    for (int i = 0; i < num_taps; i++) { // num_taps は常に 1
-                        tap_code(keycode);
-                        if (layer5_tap_delay_ms > 0) { // tap_delay_ms は 0 または小さい値
-                            wait_ms(layer5_tap_delay_ms);
-                        }
-                    }
-                }
-            } else { // 垂直方向が支配的
-                 int effective_delta = abs(raw_delta_y) - layer5_sensitivity_threshold;
-                 if (effective_delta > 0) {
-                    int num_taps = (int)(effective_delta / layer5_key_tap_divisor);
-                    // max_taps_per_event が 1 なので、 num_taps がどう計算されても最終的に 1 にクランプされます
-                    num_taps = MAX(1, MIN(layer5_max_taps_per_event, num_taps));
+        // どちらかの軸でステップが発生したかチェック
+        if (steps_x != 0 || steps_y != 0) {
+            uint16_t keycode_to_send = KC_NO;
+            // int triggering_steps; // 使用しない
 
-                    uint16_t keycode = (raw_delta_y < 0) ? KC_LEFT : KC_RIGHT;
-                     if (is_left) { keycode = (raw_delta_y < 0) ? KC_RIGHT : KC_LEFT; }
+            // どちらの軸がステップをトリガーしたか（またはより多くステップを生成したか）を判断
+            // Layer 5 の物理方向とキーコードのマッピングは既存ロジックを踏襲
+            if (abs(steps_x) >= abs(steps_y) && steps_x != 0) {
+                // X軸でステップが発生し、かつY軸より多いかY軸ではステップが発生していない場合
+                // triggering_steps = steps_x; // 使用しない
+                keycode_to_send = (steps_x < 0) ? KC_UP : KC_DOWN; // 右手: X-で上, X+で下
+                if (is_left) { keycode_to_send = (steps_x < 0) ? KC_DOWN : KC_UP; } // 左手は反転
+            } else if (steps_y != 0) {
+                // Y軸でステップが発生し、かつX軸より多いかX軸ではステップが発生していない場合
+                // triggering_steps = steps_y; // 使用しない
+                keycode_to_send = (steps_y < 0) ? KC_LEFT : KC_RIGHT; // 右手: Y-で左, Y+で右
+                if (is_left) { keycode_to_send = (steps_y < 0) ? KC_RIGHT : KC_LEFT; } // 左手は反転
+            }
 
-                    for (int i = 0; i < num_taps; i++) { // num_taps は常に 1
-                        tap_code(keycode);
-                         if (layer5_tap_delay_ms > 0) { // tap_delay_ms は 0 または小さい値
-                            wait_ms(layer5_tap_delay_ms);
-                        }
-                    }
-                }
+            // ステップがトリガーされた（keycode_to_send が設定された）場合、1回タップを送信
+            if (keycode_to_send != KC_NO) {
+                tap_code(keycode_to_send);
+                // ここで wait_ms(layer5_tap_delay_ms) を入れても良いが、
+                // 通常は1回のトリガーで1タップなので不要。連続タップさせたい場合に意味を持つ。
             }
         }
-    } else {
-        // Layer 5 以外のマウス移動処理
-        // adjust_mouse_speed 関数による速度調整を再度呼び出します。
-        adjust_mouse_speed(m);
+        // divmod16 によって m->x, m->y には「次のステップになりきれなかった」分の移動量が残っている。
+        // これは自動的に次のレポートで加算される。
 
-        // Keyball 39/61/147/44 のデフォルト軸マッピング (YをXに、XをYに) と反転
+    } else {
+        // Layer 5 以外のマウス移動処理（adjust_mouse_speed を使用する既存ロジック）
+        adjust_mouse_speed(m); // この行は残す
         #if KEYBALL_MODEL == 61 || KEYBALL_MODEL == 39 || KEYBALL_MODEL == 147 || KEYBALL_MODEL == 44
             r->x = clip2int8(m->y);
             r->y = clip2int8(m->x);
-            if (is_left) {
-                r->x = -r->x;
-                r->y = -r->y;
-            }
+            if (is_left) { r->x = -r->x; r->y = -r->y; }
         #endif
-
-        m->x = 0;
+        m->x = 0; // Layer 5 以外では m をクリア（divmod16 による蓄積を使用しないため）
         m->y = 0;
     }
 }
