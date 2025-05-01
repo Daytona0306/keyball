@@ -2,7 +2,7 @@ RGBLIGHT_ENABLE = no
 
 OLED_ENABLE = yes
 
-VIA_ENABLE = no
+VIA_ENABLE = yes
 
 EXTRAKEY_ENABLE = yes
 
