@@ -92,7 +92,7 @@ layer_state_t layer_state_set_user(layer_state_t state) {
 void keyball_on_apply_motion_to_mouse_move(keyball_motion_t *m, report_mouse_t *r, bool is_left) {
     uint8_t layer = get_highest_layer(layer_state);
     int sensitivity_threshold = 2; // 動き始めの閾値。必要なら調整。
-    int key_tap_divisor = 2; // 閾値を超えた移動量を割って、タップ回数を決める係数。調整で感触が変わる。
+    int key_tap_divisor = 2.5; // 閾値を超えた移動量を割って、タップ回数を決める係数。調整で感触が変わる。
     int max_taps = 1; // 一回の処理で生成する最大タップ数。無限ループ防止用。
     int tap_delay_ms = 10; // 連続タップの間の遅延(ms)。必要なら調整。
 
