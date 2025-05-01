@@ -21,16 +21,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "lib/keyball/keyball.h"
 #include <math.h> // expf, sqrtf, roundf に必要
 
-// 関数プロトタイプの宣言 (Forward Declarations)
-// これらの関数が後で定義されていることをコンパイラに知らせます。
-static int16_t divmod16(int16_t *v, int16_t div);
-static inline int8_t clip2int8(int16_t v);
-
 // コンボ定義 - enumを使用した方法
 enum combos {
   TN_TO_LNG1, // T + N で KC_LNG1 を出力
   AO_TO_LNG2, // A + O で KC_LNG2 を出力
-  NUM_COMBOS // コンボの総数を定義 (必須ではありませんが一般的です)
 };
 
 // コンボを構成するキーの配列を定義
@@ -42,6 +36,11 @@ combo_t key_combos[NUM_COMBOS] __attribute__ ((section (".combos"))) = {
   [TN_TO_LNG1] = COMBO(tn_keys, KC_LNG1),
   [AO_TO_LNG2] = COMBO(ao_keys, KC_LNG2),
 };
+
+// 関数プロトタイプの宣言 (Forward Declarations)
+// これらの関数が後で定義されていることをコンパイラに知らせます。
+static int16_t divmod16(int16_t *v, int16_t div);
+static inline int8_t clip2int8(int16_t v);
 
 // adjust_mouse_speed 関数を再度定義し、含めます。
 static void adjust_mouse_speed(keyball_motion_t *m) {
@@ -108,96 +107,71 @@ layer_state_t layer_state_set_user(layer_state_t state) {
 
 void keyball_on_apply_motion_to_mouse_move(keyball_motion_t *m, report_mouse_t *r, bool is_left) {
     uint8_t layer = get_highest_layer(layer_state);
-    int sensitivity_threshold = 2; // 動き始めの閾値。必要なら調整。
-    int key_tap_divisor = 2; // 閾値を超えた移動量を割って、タップ回数を決める係数。調整で感触が変わる。
-    int max_taps = 1; // 一回の処理で生成する最大タップ数。無限ループ防止用。
-    int tap_delay_ms = 10; // 連続タップの間の遅延(ms)。必要なら調整。
 
+    // Layer 5 (カーソルキーモード) の調整パラメータ
+    // 連続での移動を不要とし、1回の動きで1ステップ移動させるための調整
+    // ★★★ 最も重要な調整パラメータ ★★★
+    int layer5_step_threshold = 25; // 1回のタップ（1ステップ）をトリガーするために必要なトラックボール移動量の「単位」。
+                                   // この値を大きくすると、1タップに必要な物理的な移動量が大きくなり、鈍感になります。小さくすると敏感になります。
+                                   // 例えば、10 なら 10 単位の移動で 1タップ、 30 なら 30 単位の移動で 1タップ発生。
+
+    // Layer 5 のその他のパラメータ (max_taps_per_event, tap_delay_ms) は、
+    // この新しいロジックではほとんど意味を持たなくなるため削除または無視できます。
+    // int layer5_max_taps_per_event = 1; // 不要になる
+    // int layer5_tap_delay_ms = 0;     // 不要になる
 
     if (layer == 5) {
-        // レイヤー5でも adjust_mouse_speed を適用
-        adjust_mouse_speed(m);
+        // Layer 5 では adjust_mouse_speed を使用しない
+        // adjust_mouse_speed(m); // この行は削除またはコメントアウトされたまま
 
-        // adjust_mouse_speed 適用後の移動量を使用
-        int16_t adjusted_delta_x = m->x;
-        int16_t adjusted_delta_y = m->y;
+        // m->x, m->y には前回のレポートからの蓄積された移動量が入っている。
+        // divmod16 を使用して、蓄積量から「ステップ数」を計算し、剰余を m->x/y に残す。
+        int steps_x = divmod16(&m->x, layer5_step_threshold);
+        int steps_y = divmod16(&m->y, layer5_step_threshold);
 
-        // トラックボールの蓄積された移動量 m をゼロにする
-        // レポートには使わないためクリア。adjust_mouse_speed 適用後にクリアする必要がある。
-        m->x = 0;
-        m->y = 0;
-
-
-        // マウスレポート r の移動量もゼロにする（念のため）
+        // マウスレポート r の移動量はゼロにする（キー入力で制御するため）
         r->x = 0;
         r->y = 0;
         r->v = 0; // スクロールもゼロにしておく
 
-        // 速度調整された移動量が閾値を超えているかチェック
-        if (abs(adjusted_delta_x) > sensitivity_threshold || abs(adjusted_delta_y) > sensitivity_threshold) {
+        // どちらかの軸でステップが発生したかチェック
+        if (steps_x != 0 || steps_y != 0) {
+            uint16_t keycode_to_send = KC_NO;
+            // int triggering_steps; // 使用しない
 
-            // 支配的な軸（移動量が大きい方）を判断
-            if (abs(adjusted_delta_x) > abs(adjusted_delta_y)) {
-                // 水平方向の移動が支配的 (物理的な左右)
-                int effective_delta = abs(adjusted_delta_x) - sensitivity_threshold; // 閾値を超えた分の移動量 (速度調整後)
-                if (effective_delta > 0) {
-                    int num_taps = effective_delta / key_tap_divisor; // 実効移動量を割ってタップ回数を決定
-                    num_taps = MAX(1, MIN(max_taps, num_taps)); // タップ回数を最低1回、最大 max_taps にクランプ
+            // どちらの軸がステップをトリガーしたか（またはより多くステップを生成したか）を判断
+            // Layer 5 の物理方向とキーコードのマッピングは既存ロジックを踏襲
+            if (abs(steps_x) >= abs(steps_y) && steps_x != 0) {
+                // X軸でステップが発生し、かつY軸より多いかY軸ではステップが発生していない場合
+                // triggering_steps = steps_x; // 使用しない
+                keycode_to_send = (steps_x < 0) ? KC_UP : KC_DOWN; // 右手: X-で上, X+で下
+                if (is_left) { keycode_to_send = (steps_x < 0) ? KC_DOWN : KC_UP; } // 左手は反転
+            } else if (steps_y != 0) {
+                // Y軸でステップが発生し、かつX軸より多いかX軸ではステップが発生していない場合
+                // triggering_steps = steps_y; // 使用しない
+                keycode_to_send = (steps_y < 0) ? KC_LEFT : KC_RIGHT; // 右手: Y-で左, Y+で右
+                if (is_left) { keycode_to_send = (steps_y < 0) ? KC_RIGHT : KC_LEFT; } // 左手は反転
+            }
 
-                    // 該当する矢印キーを複数回タップ
-                    uint16_t keycode = (adjusted_delta_x < 0) ? KC_UP : KC_DOWN; // 速度調整後 delta を使用. 負の値が上、正の値が下に対応するように調整 (KeyballのY方向は反転することが多いですが、Layer 5はキー入力なのでXYそのまま判断)
-                    if (is_left) { // 左手側キーボードの場合、トラックボールの物理的な左右が逆転するため方向を反転
-                         keycode = (adjusted_delta_x < 0) ? KC_DOWN : KC_UP;
-                    }
-
-
-                    for (int i = 0; i < num_taps; i++) {
-                        tap_code(keycode);
-                        if (tap_delay_ms > 0) {
-                            wait_ms(tap_delay_ms); // 必要に応じてタップ間に遅延を入れる
-                        }
-                    }
-                }
-
-            } else {
-                // 垂直方向の移動が支配的 (物理的な上下)
-                int effective_delta = abs(adjusted_delta_y) - sensitivity_threshold; // 閾値を超えた分の移動量 (速度調整後)
-                 if (effective_delta > 0) {
-                    int num_taps = effective_delta / key_tap_divisor; // 実効移動量を割ってタップ回数を決定
-                    num_taps = MAX(1, MIN(max_taps, num_taps)); // タップ回数を最低1回、最大 max_taps にクランプ
-
-                    // 該当する矢印キーを複数回タップ
-                    uint16_t keycode = (adjusted_delta_y < 0) ? KC_LEFT : KC_RIGHT; // 速度調整後 delta を使用. 負の値が左、正の値が右に対応するように調整 (KeyballのX方向はそのまま判断)
-                     if (is_left) { // 左手側キーボードの場合、トラックボールの物理的な上下が逆転するため方向を反転
-                         keycode = (adjusted_delta_y < 0) ? KC_RIGHT : KC_LEFT;
-                    }
-
-
-                    for (int i = 0; i < num_taps; i++) {
-                        tap_code(keycode);
-                        if (tap_delay_ms > 0) {
-                            wait_ms(tap_delay_ms); // 必要に応じてタップ間に遅延を入れる
-                        }
-                    }
-                }
+            // ステップがトリガーされた（keycode_to_send が設定された）場合、1回タップを送信
+            if (keycode_to_send != KC_NO) {
+                tap_code(keycode_to_send);
+                // ここで wait_ms(layer5_tap_delay_ms) を入れても良いが、
+                // 通常は1回のトリガーで1タップなので不要。連続タップさせたい場合に意味を持つ。
             }
         }
-    } else {
-        // Layer 5 以外のマウス移動処理
-        // adjust_mouse_speed 関数による速度調整を再度呼び出します。
-        adjust_mouse_speed(m);
+        // divmod16 によって m->x, m->y には「次のステップになりきれなかった」分の移動量が残っている。
+        // これは自動的に次のレポートで加算される。
 
-        // Keyball 39/61/147/44 のデフォルト軸マッピング (YをXに、XをYに) と反転
+    } else {
+        // Layer 5 以外のマウス移動処理（adjust_mouse_speed を使用する既存ロジック）
+        adjust_mouse_speed(m); // この行は残す
         #if KEYBALL_MODEL == 61 || KEYBALL_MODEL == 39 || KEYBALL_MODEL == 147 || KEYBALL_MODEL == 44
             r->x = clip2int8(m->y);
             r->y = clip2int8(m->x);
-            if (is_left) {
-                r->x = -r->x;
-                r->y = -r->y;
-            }
+            if (is_left) { r->x = -r->x; r->y = -r->y; }
         #endif
-
-        m->x = 0;
+        m->x = 0; // Layer 5 以外では m をクリア（divmod16 による蓄積を使用しないため）
         m->y = 0;
     }
 }
@@ -247,13 +221,13 @@ void keyball_on_apply_motion_to_mouse_scroll(keyball_motion_t *m, report_mouse_t
              // sigmoid_term 0.5 から 1 の範囲を base_n から 1 に線形補間
              dynamic_n_float = (float)base_n + ((float)1.0f - (float)base_n) * (sigmoid_term - 0.5f) * 2.0f;
         } else { // 速度が中心 (80.0) 未満の場合 (低速側)
-            // sigmoid_term 0 から 0.5 の範囲を 7 から base_n に線形補間
-            dynamic_n_float = (float)7.0f + ((float)base_n - (float)7.0f) * (sigmoid_term * 2.0f);
+            // sigmoid_term 0 から 0.5 の範囲を 10 から base_n に線形補間
+            dynamic_n_float = (float)10.0f + ((float)base_n - (float)10.0f) * (sigmoid_term * 2.0f);
         }
 
         // 計算された浮動小数点数のインデックスを整数に丸め、1から7の範囲にクランプ
         int dynamic_n = (int)roundf(dynamic_n_float);
-        dynamic_n = MAX(1, MIN(7, dynamic_n));
+        dynamic_n = MAX(1, MIN(10, dynamic_n));
 
         // 動的な除数を計算
         dynamic_div = 1 << (dynamic_n - 1);
