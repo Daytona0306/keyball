@@ -21,22 +21,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "lib/keyball/keyball.h"
 #include <math.h> // expf, sqrtf, roundf に必要
 
-// コンボ定義 - enumを使用した方法
-enum combos {
-  DM_TO_LNG1, 
-  CV_TO_LNG2, 
-  NUM_COMBOS
-};
+#ifdef COMBO_ENABLE
+const uint16_t PROGMEM my_jq[] = {KC_J, KC_Q, COMBO_END};
 
-// コンボを構成するキーの配列を定義
-const uint16_t PROGMEM dm_keys[] = {KC_D, KC_M, COMBO_END};
-const uint16_t PROGMEM cv_keys[] = {KC_C, KC_V, COMBO_END};
-
-// combo_t 型の配列でコンボを定義。enum名をインデックスとして使用します。
-combo_t key_combos[NUM_COMBOS] __attribute__ ((section (".combos"))) = {
-  [DM_TO_LNG1] = COMBO(dm_keys, KC_LNG1),
-  [CV_TO_LNG2] = COMBO(cv_keys, KC_LNG2),
+combo_t key_combos[] = {
+COMBO(my_jq, KC_QUES),
 };
+#endif
 
 
 // 関数プロトタイプの宣言 (Forward Declarations)
