@@ -96,7 +96,7 @@ void keyball_on_apply_motion_to_mouse_move(keyball_motion_t *m, report_mouse_t *
     // 連続での移動を不要とするため、max_taps_per_event は 1 に設定します。
     // 主な調整は sensitivity_threshold と key_tap_divisor で行います。
     int layer5_sensitivity_threshold = 3;  // 動き始めの閾値。この値より小さい移動は無視されます。大きくすると細かい動きを無視しやすくなります。
-    float layer5_key_tap_divisor = 20.0;    // 閾値を超えた移動量と組み合わせて、1タップを生成する感度を決定。大きいほど鈍く、小さいほど敏感になります。
+    float layer5_key_tap_divisor = 50.0;    // 閾値を超えた移動量と組み合わせて、1タップを生成する感度を決定。大きいほど鈍く、小さいほど敏感になります。
     int layer5_max_taps_per_event = 1; // ★ここを 1 に設定 ★ 一回のトラックボールイベントで生成する最大タップ数を1に制限
     int layer5_tap_delay_ms = 0;     // ★ここを 0 または小さい値に ★ 1タップしか出ないので大きな意味はないが、念のため。
 
