@@ -196,7 +196,7 @@ void keyball_on_apply_motion_to_mouse_scroll(keyball_motion_t *m, report_mouse_t
 
         // シグモイド関数の項 (速度に対して 0 から 1 へ変化, speed = 80.0 で 0.5)
         // 傾き -0.05f, 中心 80.0f
-        float sigmoid_term = 1.0f / (1.0f + expf(-0.05f * (speed - 0.8f)));
+        float sigmoid_term = 1.0f / (1.0f + expf(-0.05f * (speed - 60.0f)));
 
         // sigmoid_term (0..1) を 除数インデックスの範囲 (1..7) にマッピング
         // sigmoid_term 0 -> 7, 0.5 -> base_n, 1 -> 1 となるように線形補間
